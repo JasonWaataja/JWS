@@ -63,17 +63,6 @@
 						     "GdkPixbuf")))
 
 (defun apply-changes ()
-;;   (cond ((and (gtk-toggle-button-active rotate-button)
-;; 	      (<= (gtk-spin-button-get-value-as-int time-button) 0))
-;; 	 (let ((dialog (make-instance 'gtk-message-dialog
-;; 				      :message-type :warning
-;; 				      :buttons :ok
-;; 				      :text "Error"
-;; 				      :secondary-text "Please use a number
-;; greater than zero for the time.")))
-;; 	   (gtk-dialog-run dialog)
-;; 	   (gtk-widget-destroy dialog)))
-  ;; 	(t t)))
   (write-jws-info-to-file (get-current-jws-info)))
 
 (defun on-apply-clicked (button)
@@ -90,6 +79,9 @@
 			 (lambda (,action-arg ,parameter-arg)
 			   (declare (ignore ,action-arg ,parameter-arg))
 			   ,@body)))))
+
+;;The global store of builder objects of type builder-objects-list
+(defvar *builder-objects* (make-instance 'builder-objects-list))
 
 (defun jws-load-builder-objects ()
   (setf *builder-objects*
@@ -111,9 +103,6 @@
 	   (up-button "up_button")
 	   (down-button "down_button")
 	   (rotate-items-box "rotate_items_box")))))
-
-;;The global store of builder objects of type builder-objects-list
-(defvar *builder-objects* (make-instance 'builder-objects-list))
 
 (defvar *tree-view-selection*)
 
@@ -147,13 +136,6 @@
 (defun show-selected-side-buttons (selected)
   "If selected is true, show the Remove and Cancel buttons. If it's false, then
 show the cancel buttons."
-  ;; (with-builder-objects-list (*builder-objects* (remove-button remove-button)
-  ;; 						(cancel-button cancel-button))
-  ;;   (if selected
-  ;; 	(set-widgets-visibility remove-button t
-  ;; 				cancel-button t)
-  ;; 	(set-widgets-visibility remove-button nil
-  ;; 				cancel-button nil))))
   (dolist (widget *row-side-buttons*)
     (setf (gtk-widget-visible widget) selected)))
 
@@ -188,12 +170,6 @@ show the cancel buttons."
 				  "File"
 				  (create-preview-pixbuf (namestring
 							  probe-res)))))
-				  ;; nil)
-	      ;; (with-mutex (*load-previews-queue-mutex* :wait-p t)
-	      ;; 	(enqueue *load-previews-queue*
-	      ;; 		 (gtk-tree-row-reference-new *images-tree*
-	      ;; 					     (gtk-tree-model-get-path
-	      ;; 					      *images-tree* iter))))))
 	  (let ((iter (gtk-tree-store-append *images-tree* parent-iter)))
 	    (gtk-tree-store-set *images-tree* iter
 				(namestring probe-res)
@@ -202,10 +178,6 @@ show the cancel buttons."
 				nil)
 	    (dolist (child (list-directory probe-res))
 	      (add-file child iter)))))))
-
-;; (defun add-file (path)
-;;   ;;only works in some implementations because of how probe-file works
-;;   (add-file-recurse path nil))
 
 (defun add-directory-selection ()
   (let ((dialog (gtk-file-chooser-dialog-new "Choose Directory"
@@ -248,10 +220,9 @@ show the cancel buttons."
 
 (defvar *selected-rows* nil)
 
-(defun on-selection-changed ()
-  ;; (show-selected-side-buttons t)
+(defun on-selection-changed (selection)
   (let ((selected-list (gtk-tree-selection-get-selected-rows
-			*tree-view-selection*)))
+			selection)))
     (if selected-list
 	(let ((as-row-references (loop for path in selected-list
 				    collect (gtk-tree-row-reference-new
@@ -406,6 +377,11 @@ one file.")))
 
 (defparameter *image-window-width* 960)
 
+(defun set-window-pixbuf (window image pixbuf)
+  (gtk-image-set-from-pixbuf image pixbuf)
+  (gtk-window-resize window (gdk-pixbuf-get-width pixbuf)
+		     (gdk-pixbuf-get-height pixbuf)))
+
 (defun show-dialog-for-image (path)
   (let* ((original-pixbuf (handler-case (gdk-pixbuf-new-from-file path)
 			    (error () nil)))
@@ -429,16 +405,18 @@ one file.")))
 	      (g-signal-connect original-button "clicked"
 				(lambda (button)
 				  (declare (ignore button))
-				  (gtk-image-set-from-pixbuf image
-							     original-pixbuf)))
+				  (set-window-pixbuf dialog
+						     image
+						     original-pixbuf)))
 	      (gtk-widget-show original-button)
 	      (gtk-container-add (gtk-dialog-get-action-area dialog)
 				 scaled-button)
 	      (g-signal-connect scaled-button "clicked"
 				(lambda (button)
 				  (declare (ignore button))
-				  (gtk-image-set-from-pixbuf image
-							     scaled-pixbuf)))
+				  (set-window-pixbuf dialog
+						     image
+						     scaled-pixbuf)))
 	      (gtk-widget-show scaled-button)))
 	  (gtk-container-add (gtk-dialog-get-content-area dialog)
 			     (gtk-label-new "Test Label"))
@@ -450,28 +428,6 @@ one file.")))
 	  (gtk-widget-destroy dialog))
 	(message-dialog "Error"
 			(format nil "Unable to display file ~a." path)))))
-
-;; A queue of row references. Remember to check if they are valid.
-;; (defvar *load-previews-queue* (make-instance 'queue))
-;; (defvar *load-previews-queue-mutex* (make-mutex))
-
-;; (defvar *load-previews-thread*)
-
-;; (defun load-previews-thread-run ()
-;;   (loop do
-;;        (with-mutex (*load-previews-queue-mutex* :wait-p t)
-;; 	 (let ((row-reference (dequeue *load-previews-queue*)))
-;; 	   (when (gtk-tree-row-reference-valid row-reference)
-;; 	     (let ((tree-path (gtk-tree-row-reference-get-path row-reference)))
-;; 	       (when tree-path
-;; 		 (let* ((iter (gtk-tree-model-get-iter *images-tree* tree-path))
-;; 			(file-path (gtk-tree-model-get-value *images-tree* iter
-;; 							     0)))
-;; 		   (gtk-tree-store-set-value
-;; 		    *images-tree*
-;; 		    iter
-;; 		    3
-;; 		    (create-preview-pixbuf file-path))))))))))
 
 (defun on-remove-clicked (button)
   (declare (ignore button))
@@ -487,13 +443,6 @@ subfiles and subdirectories. Please only use top level items.") :warning)
 		   (return nil))
 	       finally
 		 (return t))
-	;; (dolist (ref (loop for path in selected-paths
-	;; 		collect (gtk-tree-row-reference-new *images-tree*
-	;; 						    path)))
-	;;   (gtk-tree-store-remove *images-tree*
-	;; 			 (gtk-tree-model-get-iter
-	;; 			  *images-tree*
-	;; 			  (gtk-tree-row-reference-get-path ref))))))))
 	(dolist (row *selected-rows*)
 	  (gtk-tree-store-remove *images-tree*
 				 (gtk-tree-model-get-iter
@@ -618,16 +567,32 @@ Item is already last.") :error)
 	  (write-jws-info-to-file (get-current-jws-info) filename))))
     (gtk-widget-destroy dialog)))
 
+(defun get-license ()
+  (format nil
+"This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or ~%(~
+at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>."))
+
+(defun show-about-dialog ()
+  (gtk-show-about-dialog (get-main-window)
+			 :program-name "JWS"
+			 :title "About JWS"
+			 :license (get-license)
+			 :authors '("Jason Waataja")
+			 :copyright "Copyright (C) 2016 Jason Waataja"
+			 :version "Version 0.00"))
+
 (defun jws-application-activate (application)
   (declare (ignore application))
-  ;; (within-main-loop
-  ;;   (let ((main-window (make-instance 'gtk-application-window
-  ;;   				      :application application
-  ;;   				      :title "JWS")))p
-  ;;     (g-signal-connect main-window "destroy" (lambda (window)
-  ;;   						(declare (ignore window))
-  ;;   						(leave-gtk-main)))
-  ;;     (gtk-widget-show-all main-window))))
   (within-main-loop
     (jws-load-builder-objects)
     (load-row-side-buttons)
@@ -663,6 +628,8 @@ Item is already last.") :error)
 	(save-as))
       (simple-action-in-map ("open" main-window)
 	(open-action))
+      (simple-action-in-map ("about" main-window)
+	(show-about-dialog))
       (gtk-spin-button-set-range time-button 0d0 99999d0)
       (gtk-spin-button-set-increments time-button 1d0 10d0)
 
@@ -690,10 +657,7 @@ Item is already last.") :error)
 	(gtk-tree-view-append-column tree-view type-column)
 	(gtk-tree-view-append-column tree-view image-column))
       (setf *tree-view-selection* (gtk-tree-view-get-selection tree-view))
-      (g-signal-connect *tree-view-selection* "changed"
-      			(lambda (selection)
-      			  (declare (ignore selection))
-      			  (on-selection-changed)))
+      (g-signal-connect *tree-view-selection* "changed" #'on-selection-changed)
       (g-signal-connect tree-view "row-activated"
 			(lambda (tree-view path column)
 			  (declare (ignore tree-view column))
