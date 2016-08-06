@@ -11,6 +11,8 @@ AM_GNU_GETTEXT_VERSION([0.19])
 
 PKG_CHECK_MODULES([JWS], [
                    glib-2.0
+                   gobject-2.0
+                   gio-2.0
                    ])
 
 AC_CONFIG_FILES([
