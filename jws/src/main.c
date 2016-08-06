@@ -3,8 +3,6 @@
 #include <stdio.h>
 #include <glib/gi18n.h>
 #include <gio/gio.h>
-#include <signal.h>
-#include <glib-unix.h>
 #include "jwsapplication.h"
 
 void

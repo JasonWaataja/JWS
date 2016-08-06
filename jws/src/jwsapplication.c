@@ -86,8 +86,6 @@ jws_application_open (GApplication *app,
 {
   JwsApplicationPrivate *priv;
   priv = jws_application_get_instance_private (JWS_APPLICATION (app));
-
-  print_jws_info (priv->current_info);
   
   for (int i = 0; i < n_files; i++)
     {
@@ -370,7 +368,8 @@ jws_application_display_images (JwsApplication *app)
               jws_shuffle_list (priv->file_list);
             }
           GList *iter;
-          for (iter = priv->file_list; iter != NULL;
+          for (iter = priv->file_list;
+               iter != NULL && !jws_application_get_should_exit_loop (app);
                iter = g_list_next (iter))
             {
               char *path;
