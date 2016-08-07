@@ -1,5 +1,4 @@
-/* jwsconfigapplication.h - header for the JwsConfigApplication class
-
+/* jwsconfigwindow.h - header for the JwsConfigWindow class
 
 This file is part of JWS.
 
@@ -16,24 +15,24 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with JWS.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#ifndef JWSCONFIGAPPLICATION_H
-#define JWSCONFIGAPPLICATION_H
+#ifndef JWSCONFIGWINDOW_H
+#define JWSCONFIGWINDOW_H
 
 #include <gtk/gtk.h>
+#include "jwsconfigapplication.h"
 
-#define JWS_TYPE_CONFIG_APPLICATION (jws_config_application_get_type ())
-#define JWS_CONFIG_APPLICATION(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST ((obj), JWS_TYPE_CONFIG_APPLICATION, \
-                               JwsConfigApplication))
+#define JWS_TYPE_CONFIG_WINDOW (jws_config_window_get_type ())
+#define JWS_CONFIG_WINDOW \
+  (G_TYPE_CHECK_INSTANCE_CAST ((obj), JWS_TYPE_CONFIG_WINDOW, \
+                               JwsConfigWindow))
 
-typedef struct _JwsConfigApplication JwsConfigApplication;
-typedef struct _JwsConfigApplicationClass JwsConfigApplicationClass;
+typedef struct _JwsConfigWindow JwsConfigWindow;
+typedef struct _JwsConfigWindowClass JwsConfigWindowClass;
 
 GType
-jws_config_application_get_type (void);
+jws_config_window_get_type (void);
 
-JwsConfigApplication *
-jws_config_application_new ();
+JwsConfigWindow *
+jws_config_window_new (JwsConfigApplication *app);
 
-#endif /* JWSCONFIGAPPLICATION_H */
-
+#endif /* JWSCONFIGWINDOW_H */

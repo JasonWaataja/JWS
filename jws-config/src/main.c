@@ -5,9 +5,17 @@
 
 #include <gtk/gtk.h>
 
+#include "jwsconfigapplication.h"
+
 int
 main (int argc,
       char *argv[])
 {
-  g_print ("jws-config\n");
+  JwsConfigApplication *app;
+  app = jws_config_application_new ();
+
+  int status;
+  status = g_application_run (G_APPLICATION (app), argc, argv);
+
+  return status;
 }

@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with JWS.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "jwsconfigapplication.h"
+#include "jwsconfigwindow.h"
 #include <gtk/gtk.h>
 
 struct _JwsConfigApplication
@@ -41,6 +42,9 @@ static void
 jws_config_application_activate (GApplication *app)
 {
   g_print ("JwsConfigApplication\n");
+  JwsConfigWindow *win;
+  win = jws_config_window_new (JWS_CONFIG_APPLICATION (app));
+  gtk_window_present (GTK_WINDOW (win));
 }
 
 static void
@@ -51,5 +55,13 @@ jws_config_application_init (JwsConfigApplication *app)
 static void
 jws_config_application_class_init (JwsConfigApplicationClass *kclass)
 {
+  G_APPLICATION_CLASS (kclass)->activate = jws_config_application_activate;
 }
 
+JwsConfigApplication *
+jws_config_application_new ()
+{
+  return g_object_new (JWS_TYPE_CONFIG_APPLICATION,
+                       "application-id", "com.waataja.jws-config",
+                       NULL);
+}
