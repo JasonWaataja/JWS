@@ -1,7 +1,8 @@
 
 
 AC_INIT([jws-config], [0.1], [jasonswaataja@gmail.com])
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([-Wall foreign])
+AM_SILENT_RULES([yes])
 
 AC_PROG_CC
 PKG_PROG_PKG_CONFIG
