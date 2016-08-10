@@ -28,7 +28,7 @@ along with JWS.  If not, see <http://www.gnu.org/licenses/>.  */
   (G_TYPE_CHECK_INSTANCE_CAST ((obj), JWS_TYPE_CONFIG_WINDOW, \
                                JwsConfigWindow))
 
-#define JWS_CONFIG_WINDOW_PREVIEW_HEIGHT 60
+#define JWS_CONFIG_WINDOW_PREVIEW_HEIGHT 100
 
 typedef struct _JwsConfigWindow JwsConfigWindow;
 typedef struct _JwsConfigWindowClass JwsConfigWindowClass;

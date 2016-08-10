@@ -627,25 +627,27 @@ preview_thread_run (gpointer win)
                                   -1);
               GdkPixbuf *preview_src = gdk_pixbuf_new_from_file (path,
                                                                  NULL);
-              GdkPixbuf *preview;
-              preview =
-                jws_create_scaled_pixbuf (preview_src,
-                                          -1,
-                                          JWS_CONFIG_WINDOW_PREVIEW_HEIGHT);
-              g_object_unref (preview_src);
-              /* check to see if it's valid against just in case.  I really
-               * should do this with some other mechanism instead such as a
-               * mutex but this is faster for me and will probably fix most of
-               * the issue.  */
-              if (gtk_tree_row_reference_valid (row_ref))
+              if (preview_src)
                 {
-                  gtk_tree_store_set (priv->tree_store, &iter,
-                                      PREVIEW_COLUMN, preview,
-                                      -1);
+                  GdkPixbuf *preview;
+                  int height = JWS_CONFIG_WINDOW_PREVIEW_HEIGHT;
+                  preview =
+                    jws_create_scaled_pixbuf (preview_src,
+                                              -1,
+                                              height);
+                  g_object_unref (preview_src);
+                  /* I need to rewrite this part so that it uses something like
+                   * a mutex instead to make sure that it wasn't removed.  */
+                  if (gtk_tree_row_reference_valid (row_ref))
+                    {
+                      gtk_tree_store_set (priv->tree_store, &iter,
+                                          PREVIEW_COLUMN, preview,
+                                          -1);
+                    }
+                  g_object_unref (preview);
                 }
-              g_object_unref (preview);
-              gtk_tree_row_reference_free (row_ref);
             }
+          gtk_tree_row_reference_free (row_ref);
           gtk_tree_path_free (tree_path);
         }
     }

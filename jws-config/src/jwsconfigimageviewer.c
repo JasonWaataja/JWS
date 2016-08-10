@@ -338,11 +338,14 @@ jws_config_image_viewer_original_size (JwsConfigImageViewer *viewer)
   JwsConfigImageViewerPrivate *priv;
   priv = jws_config_image_viewer_get_instance_private (viewer);
 
-  int width = gdk_pixbuf_get_width (priv->original_pixbuf);
-  int height = gdk_pixbuf_get_height (priv->original_pixbuf);
+  if (priv->original_pixbuf)
+    {
+      int width = gdk_pixbuf_get_width (priv->original_pixbuf);
+      int height = gdk_pixbuf_get_height (priv->original_pixbuf);
 
-  gtk_image_set_from_pixbuf (GTK_IMAGE (priv->image), priv->original_pixbuf);
-  gtk_window_resize (GTK_WINDOW (viewer), width, height);
+      gtk_image_set_from_pixbuf (GTK_IMAGE (priv->image), priv->original_pixbuf);
+      gtk_window_resize (GTK_WINDOW (viewer), width, height);
+    }
 }
 
 void
@@ -351,11 +354,14 @@ jws_config_image_viewer_scaled_size (JwsConfigImageViewer *viewer)
   JwsConfigImageViewerPrivate *priv;
   priv = jws_config_image_viewer_get_instance_private (viewer);
 
-  int width = gdk_pixbuf_get_width (priv->scaled_pixbuf);
-  int height = gdk_pixbuf_get_height (priv->scaled_pixbuf);
+  if (priv->scaled_pixbuf)
+    {
+      int width = gdk_pixbuf_get_width (priv->scaled_pixbuf);
+      int height = gdk_pixbuf_get_height (priv->scaled_pixbuf);
 
-  gtk_image_set_from_pixbuf (GTK_IMAGE (priv->image), priv->scaled_pixbuf);
-  gtk_window_resize (GTK_WINDOW (viewer), width, height);
+      gtk_image_set_from_pixbuf (GTK_IMAGE (priv->image), priv->scaled_pixbuf);
+      gtk_window_resize (GTK_WINDOW (viewer), width, height);
+    }
 }
 
 gchar *
@@ -384,16 +390,24 @@ jws_config_image_viewer_set_pixbufs_for_path (JwsConfigImageViewer *viewer,
     g_object_unref (priv->scaled_pixbuf);
 
   priv->original_pixbuf = gdk_pixbuf_new_from_file (path, NULL);
-  int src_width = gdk_pixbuf_get_width (priv->original_pixbuf);
-  int src_height = gdk_pixbuf_get_height (priv->original_pixbuf);
+  if (priv->original_pixbuf)
+    {
+      int src_width = gdk_pixbuf_get_width (priv->original_pixbuf);
+      int src_height = gdk_pixbuf_get_height (priv->original_pixbuf);
 
-  int scaled_width_by_width = JWS_CONFIG_IMAGE_VIEWER_MAX_WIDTH;
-  int scaled_width_by_height = (JWS_CONFIG_IMAGE_VIEWER_MAX_HEIGHT
-                                * src_width / src_height);
+      int scaled_width_by_width = JWS_CONFIG_IMAGE_VIEWER_MAX_WIDTH;
+      int scaled_width_by_height = (JWS_CONFIG_IMAGE_VIEWER_MAX_HEIGHT
+                                    * src_width / src_height);
 
-  int dest_width = MIN (scaled_width_by_width, scaled_width_by_height);
+      int dest_width = MIN (scaled_width_by_width, scaled_width_by_height);
 
-  priv->scaled_pixbuf = jws_create_scaled_pixbuf (priv->original_pixbuf,
-                                                  dest_width,
-                                                  -1);
+      priv->scaled_pixbuf = jws_create_scaled_pixbuf (priv->original_pixbuf,
+                                                      dest_width,
+                                                      -1);
+    }
+  else
+    {
+      /* The original pixbuf is already NULL.  */
+      priv->scaled_pixbuf = NULL;
+    }
 }
