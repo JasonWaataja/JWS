@@ -33,6 +33,7 @@ typedef struct _JwsConfigApplicationPrivate JwsConfigApplicationPrivate;
 
 struct _JwsConfigApplicationPrivate
 {
+  JwsConfigWindow *win;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (JwsConfigApplication, jws_config_application,
@@ -41,15 +42,21 @@ G_DEFINE_TYPE_WITH_PRIVATE (JwsConfigApplication, jws_config_application,
 static void
 jws_config_application_activate (GApplication *app)
 {
-  g_print ("JwsConfigApplication\n");
-  JwsConfigWindow *win;
-  win = jws_config_window_new (JWS_CONFIG_APPLICATION (app));
-  gtk_window_present (GTK_WINDOW (win));
+  JwsConfigApplicationPrivate *priv;
+  priv = jws_config_application_get_instance_private
+    (JWS_CONFIG_APPLICATION (app));
+  
+  priv->win = jws_config_window_new (JWS_CONFIG_APPLICATION (app));
+  gtk_window_present (GTK_WINDOW (priv->win));
 }
 
 static void
 jws_config_application_init (JwsConfigApplication *app)
 {
+  JwsConfigApplicationPrivate *priv;
+  priv = jws_config_application_get_instance_private (app);
+  
+  priv->win = NULL;
 }
 
 static void
