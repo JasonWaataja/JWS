@@ -343,8 +343,13 @@ jws_config_image_viewer_original_size (JwsConfigImageViewer *viewer)
       int width = gdk_pixbuf_get_width (priv->original_pixbuf);
       int height = gdk_pixbuf_get_height (priv->original_pixbuf);
 
-      gtk_image_set_from_pixbuf (GTK_IMAGE (priv->image), priv->original_pixbuf);
+      gtk_image_set_from_pixbuf (GTK_IMAGE (priv->image),
+                                 priv->original_pixbuf);
       gtk_window_resize (GTK_WINDOW (viewer), width, height);
+    }
+  else
+    {
+      gtk_image_clear (GTK_IMAGE (priv->image));
     }
 }
 
@@ -359,8 +364,13 @@ jws_config_image_viewer_scaled_size (JwsConfigImageViewer *viewer)
       int width = gdk_pixbuf_get_width (priv->scaled_pixbuf);
       int height = gdk_pixbuf_get_height (priv->scaled_pixbuf);
 
-      gtk_image_set_from_pixbuf (GTK_IMAGE (priv->image), priv->scaled_pixbuf);
+      gtk_image_set_from_pixbuf (GTK_IMAGE (priv->image),
+                                 priv->scaled_pixbuf);
       gtk_window_resize (GTK_WINDOW (viewer), width, height);
+    }
+  else
+    {
+      gtk_image_clear (GTK_IMAGE (priv->image));
     }
 }
 
