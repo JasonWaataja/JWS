@@ -42,6 +42,7 @@ struct _JwsConfigImageViewerPrivate
   GdkPixbuf *scaled_pixbuf;
 
   GtkWidget *image;
+  GtkWidget *image_box;
   GtkWidget *previous_button;
   GtkWidget *next_button;
   GtkWidget *original_size_button;
@@ -57,6 +58,11 @@ jws_config_image_viewer_dispose (GObject *obj);
 
 static void
 jws_config_image_viewer_finalize (GObject *obj);
+
+static gboolean
+on_image_button_press (GtkWidget *viewer,
+                       GdkEvent *event,
+                       gpointer user_data);
 
 static void
 jws_config_image_viewer_init (JwsConfigImageViewer *self)
@@ -93,6 +99,9 @@ jws_config_image_viewer_init (JwsConfigImageViewer *self)
   g_signal_connect_swapped (priv->cancel_button, "clicked",
                             G_CALLBACK (gtk_widget_destroy),
                             self);
+
+  g_signal_connect_swapped (priv->image_box, "button-press-event",
+                            G_CALLBACK (on_image_button_press), self);
 }
 
 static void
@@ -116,6 +125,9 @@ jws_config_image_viewer_class_init (JwsConfigImageViewerClass *kclass)
   gtk_widget_class_bind_template_child_private (GTK_WIDGET_CLASS (kclass),
                                                 JwsConfigImageViewer,
                                                 previous_button);
+  gtk_widget_class_bind_template_child_private (GTK_WIDGET_CLASS (kclass),
+                                                JwsConfigImageViewer,
+                                                image_box);
   gtk_widget_class_bind_template_child_private (GTK_WIDGET_CLASS (kclass),
                                                 JwsConfigImageViewer,
                                                 image);
@@ -420,4 +432,78 @@ jws_config_image_viewer_set_pixbufs_for_path (JwsConfigImageViewer *viewer,
       /* The original pixbuf is already NULL.  */
       priv->scaled_pixbuf = NULL;
     }
+}
+
+static gboolean
+on_image_button_press (GtkWidget *viewer,
+                       GdkEvent *event,
+                       gpointer user_data)
+{
+  GdkEventButton *button_event = (GdkEventButton *) event;
+
+  if (event->type == GDK_BUTTON_PRESS)
+    {
+      guint button;
+      button = button_event->button;
+
+      if (button == GDK_BUTTON_SECONDARY)
+        {
+          GtkWidget *image_menu;
+          GtkWidget *prev_item;
+          GtkWidget *next_item;
+          GtkWidget *original_item;
+          GtkWidget *scaled_item;
+          GtkWidget *close_item;
+
+          image_menu = gtk_menu_new ();
+          next_item = gtk_menu_item_new_with_label (_("Next"));
+          g_signal_connect_swapped (next_item, "activate",
+                                    G_CALLBACK (jws_config_image_viewer_next),
+                                    viewer);
+          prev_item = gtk_menu_item_new_with_label (_("Previous"));
+          g_signal_connect_swapped
+            (prev_item, "activate",
+             G_CALLBACK (jws_config_image_viewer_previous),
+             viewer);
+          original_item = gtk_menu_item_new_with_label (_("Original size"));
+          g_signal_connect_swapped
+            (original_item, "activate",
+             G_CALLBACK (jws_config_image_viewer_original_size), viewer);
+          scaled_item  = gtk_menu_item_new_with_label (_("Scaled size"));
+          g_signal_connect_swapped
+            (scaled_item, "activate",
+             G_CALLBACK (jws_config_image_viewer_scaled_size), viewer);
+          close_item = gtk_menu_item_new_with_label (_("Close"));
+          g_signal_connect_swapped (close_item, "activate",
+                                    G_CALLBACK (gtk_widget_destroy),
+                                    viewer);
+
+          gtk_menu_shell_append (GTK_MENU_SHELL (image_menu), prev_item);
+          gtk_menu_shell_append (GTK_MENU_SHELL (image_menu), next_item);
+          gtk_menu_shell_append (GTK_MENU_SHELL (image_menu), original_item);
+          gtk_menu_shell_append (GTK_MENU_SHELL (image_menu), scaled_item);
+          gtk_menu_shell_append (GTK_MENU_SHELL (image_menu), close_item);
+
+          gtk_widget_show_all (image_menu);
+          gtk_menu_popup (GTK_MENU (image_menu),
+                          NULL,
+                          NULL,
+                          NULL,
+                          NULL,
+                          GDK_BUTTON_SECONDARY,
+                          /*button_event->time);*/
+                         gtk_get_current_event_time ());
+        }
+      else if (button == GDK_BUTTON_PRIMARY)
+        {
+          jws_config_image_viewer_next (JWS_CONFIG_IMAGE_VIEWER (viewer));
+        }
+      else if (button == GDK_BUTTON_MIDDLE)
+        {
+          jws_config_image_viewer_previous (JWS_CONFIG_IMAGE_VIEWER (viewer));
+        }
+    }
+  /* I think you're supposed to return false to let other handlers handle the
+   * event so I'll just leave it to false.  */
+  return FALSE;
 }

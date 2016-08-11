@@ -10,10 +10,16 @@
         <property name="can_focus">False</property>
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkImage" id="image">
+          <object class="GtkEventBox" id="image_box">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="stock">gtk-missing-image</property>
+            <child>
+              <object class="GtkImage" id="image">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="stock">gtk-missing-image</property>
+              </object>
+            </child>
           </object>
           <packing>
             <property name="expand">True</property>

@@ -130,6 +130,11 @@ on_up_button_clicked (JwsConfigWindow *win);
 static void
 on_down_button_clicked (JwsConfigWindow *win);
 
+static gboolean
+on_tree_view_button_press (GtkWidget *tree_view,
+                           GdkEvent *event,
+                           gpointer win);
+
 static void
 open_activated (GSimpleAction *action,
                 GVariant *parameter,
@@ -154,6 +159,29 @@ static void
 about_activated (GSimpleAction *action,
        GVariant *parameter,
        gpointer win);
+
+typedef struct _WindowRowEntry WindowRowEntry;
+
+struct _WindowRowEntry
+{
+  JwsConfigWindow *win;
+  GtkTreeRowReference *row_ref;
+};
+
+static void
+window_row_entry_free (WindowRowEntry *entry);
+
+static void
+on_open_menu_activated (WindowRowEntry *entry);
+
+static void
+on_up_menu_activated (WindowRowEntry *entry);
+
+static void
+on_down_menu_activated (WindowRowEntry *entry);
+
+static void
+on_remove_menu_activated (WindowRowEntry *entry);
 
 static GActionEntry win_entries[] =
 {
@@ -228,6 +256,8 @@ jws_config_window_init (JwsConfigWindow *self)
                             priv->tree_selection);
   g_signal_connect (priv->tree_view, "row-activated",
                     G_CALLBACK (on_row_activated), self);
+  g_signal_connect (priv->tree_view, "button-press-event",
+                    G_CALLBACK (on_tree_view_button_press), self);
   g_signal_connect (priv->tree_selection, "changed",
                     G_CALLBACK (on_selection_changed), self);
 
@@ -1697,4 +1727,296 @@ jws_config_window_save_to_file (JwsConfigWindow *win, const char *path)
           gtk_widget_destroy (dialog);
         }
     }
+}
+
+static gboolean
+on_tree_view_button_press (GtkWidget *tree_view,
+                           GdkEvent *event,
+                           gpointer win)
+{
+  if (event->type != GDK_BUTTON_PRESS)
+    return FALSE;
+
+  GdkEventButton *button_event;
+  button_event = (GdkEventButton *) event;
+
+  if (button_event->button != GDK_BUTTON_SECONDARY)
+      return FALSE;
+
+  GtkTreePath *tree_path;
+  GtkTreeViewColumn *tree_column;
+
+  gboolean row_exists;
+  row_exists = gtk_tree_view_get_path_at_pos (GTK_TREE_VIEW (tree_view),
+                                              button_event->x,
+                                              button_event->y,
+                                              &tree_path,
+                                              &tree_column,
+                                              NULL,
+                                              NULL);
+
+  if (!row_exists || tree_path == NULL || tree_column == NULL)
+    {
+      gtk_tree_path_free (tree_path);
+      return FALSE;
+    }
+
+  JwsConfigWindowPrivate *priv;
+  priv = jws_config_window_get_instance_private (JWS_CONFIG_WINDOW (win));
+
+  GtkTreeModel *model;
+  model = GTK_TREE_MODEL (priv->tree_store);
+
+  GtkTreeRowReference *row_ref;
+  row_ref = gtk_tree_row_reference_new (model,
+                                        tree_path);
+  GtkTreeIter iter;
+  gtk_tree_model_get_iter (model, &iter, tree_path);
+
+  GtkWidget *item_menu;
+  item_menu = gtk_menu_new ();
+
+  int depth;
+  depth = gtk_tree_path_get_depth (tree_path);
+
+  gboolean is_directory;
+  gtk_tree_model_get (model, &iter,
+                      IS_DIRECTORY_COLUMN, &is_directory,
+                      -1);
+
+  int item_count = 0;
+
+  if (!is_directory)
+    {
+      GtkWidget *open_item;
+      open_item = gtk_menu_item_new_with_label (_("Open"));
+      WindowRowEntry *entry = g_new (WindowRowEntry, 1);
+      entry->win = win;
+      entry->row_ref = gtk_tree_row_reference_copy (row_ref);
+      g_signal_connect_data (open_item, "activate",
+                             G_CALLBACK (on_open_menu_activated),
+                             entry,
+                             (GClosureNotify) window_row_entry_free,
+                             G_CONNECT_SWAPPED);
+      gtk_menu_shell_append (GTK_MENU_SHELL (item_menu), open_item);
+      item_count++;
+    }
+
+  if (depth == 1)
+    {
+      WindowRowEntry *remove_entry;
+      remove_entry = g_new (WindowRowEntry, 1);
+      remove_entry->win = win;
+      remove_entry->row_ref = gtk_tree_row_reference_copy (row_ref);
+
+      GtkWidget *remove_item;
+      remove_item = gtk_menu_item_new_with_label (_("Remove"));
+      g_signal_connect_data (remove_item, "activate",
+                             G_CALLBACK (on_remove_menu_activated),
+                             remove_entry,
+                             (GClosureNotify) window_row_entry_free,
+                             G_CONNECT_SWAPPED);
+      gtk_menu_shell_append (GTK_MENU_SHELL (item_menu), remove_item);
+      item_count++;
+
+      gint *indices;
+      indices = gtk_tree_path_get_indices (tree_path);
+
+      int position;
+      position = indices[0];
+
+      if (position > 0)
+        {
+          WindowRowEntry *up_entry;
+          up_entry = g_new (WindowRowEntry, 1);
+          up_entry->win = win;
+          up_entry->row_ref = gtk_tree_row_reference_copy (row_ref);
+          GtkWidget *up_item;
+          up_item = gtk_menu_item_new_with_label (_("Move up"));
+          g_signal_connect_data (up_item, "activate",
+                                 G_CALLBACK (on_up_menu_activated),
+                                 up_entry,
+                                 (GClosureNotify) window_row_entry_free,
+                                 G_CONNECT_SWAPPED);
+          gtk_menu_shell_append (GTK_MENU_SHELL (item_menu), up_item);
+          item_count++;
+        }
+
+      int child_count;
+      child_count = gtk_tree_model_iter_n_children (model, NULL);
+
+      if (position < child_count - 1)
+        {
+          WindowRowEntry *down_entry;
+          down_entry = g_new (WindowRowEntry, 1);
+          down_entry->win = win;
+          down_entry->row_ref = gtk_tree_row_reference_copy (row_ref);
+          GtkWidget *down_item;
+          down_item = gtk_menu_item_new_with_label (_("Move down"));
+          g_signal_connect_data (down_item, "activate",
+                                 G_CALLBACK (on_down_menu_activated),
+                                 down_entry,
+                                 (GClosureNotify) window_row_entry_free,
+                                 G_CONNECT_SWAPPED);
+          gtk_menu_shell_append (GTK_MENU_SHELL (item_menu), down_item);
+          item_count++;
+        }
+    }
+  gtk_tree_path_free (tree_path);
+  gtk_tree_row_reference_free (row_ref);
+
+  if (item_count > 0)
+    {
+      gtk_widget_show_all (item_menu);
+
+      gtk_menu_popup (GTK_MENU (item_menu),
+                      NULL,
+                      NULL,
+                      NULL,
+                      NULL,
+                      button_event->button,
+                      button_event->time);
+    }
+
+  return FALSE;
+}
+
+void
+jws_config_window_move_row_up (JwsConfigWindow *win,
+                               GtkTreeRowReference *row_ref)
+{
+  if (!gtk_tree_row_reference_valid (row_ref))
+    return;
+
+  JwsConfigWindowPrivate *priv;
+  priv = jws_config_window_get_instance_private (win);
+  
+  GtkTreeModel *model;
+  model = GTK_TREE_MODEL (priv->tree_store);
+
+  GtkTreeIter start_iter;
+  GtkTreeIter new_iter;
+
+  GtkTreePath *tree_path;
+  tree_path = gtk_tree_row_reference_get_path (row_ref);
+
+  gtk_tree_model_get_iter (model, &start_iter, tree_path);
+
+  gboolean move_valid;
+  move_valid = gtk_tree_path_prev (tree_path);
+
+  if (move_valid)
+    {
+      gtk_tree_model_get_iter (model, &new_iter, tree_path);
+      gtk_tree_store_move_before (priv->tree_store, &start_iter, &new_iter);
+    }
+  gtk_tree_path_free (tree_path);
+}
+
+void
+jws_config_window_move_row_down (JwsConfigWindow *win,
+                                 GtkTreeRowReference *row_ref)
+{
+  if (!gtk_tree_row_reference_valid (row_ref))
+    return;
+
+  JwsConfigWindowPrivate *priv;
+  priv = jws_config_window_get_instance_private (win);
+  
+  GtkTreeModel *model;
+  model = GTK_TREE_MODEL (priv->tree_store);
+
+  GtkTreeIter start_iter;
+  GtkTreeIter new_iter;
+  GtkTreeIter parent_iter;
+
+  GtkTreePath *tree_path;
+  tree_path = gtk_tree_row_reference_get_path (row_ref);
+
+  gtk_tree_model_get_iter (model, &start_iter, tree_path);
+
+  int depth;
+  depth = gtk_tree_path_get_depth (tree_path);
+
+  gboolean is_valid = TRUE;
+  int child_count = 0;
+
+  if (depth == 1)
+    {
+      child_count = gtk_tree_model_iter_n_children (model, NULL);
+    }
+  else
+    {
+      gtk_tree_model_iter_parent (model, &parent_iter, &start_iter);
+      child_count = gtk_tree_model_iter_n_children (model, &parent_iter);
+    }
+
+  int position;
+  position = gtk_tree_path_get_indices (tree_path)[depth - 1];
+
+  if (position >= child_count - 1)
+    is_valid = FALSE;
+
+  if (is_valid)
+    {
+      gtk_tree_path_next (tree_path);
+      gtk_tree_model_get_iter (model, &new_iter, tree_path);
+
+      gtk_tree_store_move_after (priv->tree_store, &start_iter, &new_iter);
+    }
+  
+  gtk_tree_path_free (tree_path);
+}
+
+void
+jws_config_window_remove_row (JwsConfigWindow *win,
+                              GtkTreeRowReference *row_ref)
+{
+  if (!gtk_tree_row_reference_valid (row_ref))
+    return;
+
+  JwsConfigWindowPrivate *priv;
+  priv = jws_config_window_get_instance_private (win);
+  
+  GtkTreePath *tree_path;
+  tree_path = gtk_tree_row_reference_get_path (row_ref);
+
+  GtkTreeIter iter;
+  gtk_tree_model_get_iter (GTK_TREE_MODEL (priv->tree_store), &iter,
+                           tree_path);
+
+  gtk_tree_store_remove (priv->tree_store, &iter);
+
+  gtk_tree_path_free (tree_path);
+}
+
+static void
+on_open_menu_activated (WindowRowEntry *entry)
+{
+  jws_config_window_show_image_for_row (entry->win, entry->row_ref);
+}
+
+static void
+on_up_menu_activated (WindowRowEntry *entry)
+{
+  jws_config_window_move_row_up (entry->win, entry->row_ref);
+}
+
+static void
+on_down_menu_activated (WindowRowEntry *entry)
+{
+  jws_config_window_move_row_down (entry->win, entry->row_ref);
+}
+
+static void
+on_remove_menu_activated (WindowRowEntry *entry)
+{
+  jws_config_window_remove_row (entry->win, entry->row_ref);
+}
+
+static void
+window_row_entry_free (WindowRowEntry *entry)
+{
+  gtk_tree_row_reference_free (entry->row_ref);
+  g_free (entry);
 }

@@ -97,6 +97,18 @@ jws_config_window_get_previous_image_row (JwsConfigWindow *win,
                                           GtkTreeRowReference *row_ref);
 
 void
+jws_config_window_remove_row (JwsConfigWindow *win,
+                              GtkTreeRowReference *row_ref);
+
+void
+jws_config_window_move_row_up (JwsConfigWindow *win,
+                               GtkTreeRowReference *row_ref);
+
+void
+jws_config_window_move_row_down (JwsConfigWindow *win,
+                                 GtkTreeRowReference *row_ref);
+
+void
 jws_config_window_load_file (JwsConfigWindow *win, const char *path);
 
 void
