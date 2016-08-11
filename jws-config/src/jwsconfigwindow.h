@@ -130,4 +130,7 @@ void
 jws_config_window_set_wallpaper_for_row (JwsConfigWindow *win,
                                          GtkTreeRowReference *row_ref);
 
+void
+jws_config_window_write_to_default_config_file (JwsConfigWindow *win);
+
 #endif /* JWSCONFIGWINDOW_H */

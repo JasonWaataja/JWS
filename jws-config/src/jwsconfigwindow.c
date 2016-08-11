@@ -258,6 +258,9 @@ jws_config_window_init (JwsConfigWindow *self)
   g_signal_connect_swapped (priv->cancel_button, "clicked",
                             G_CALLBACK (gtk_tree_selection_unselect_all),
                             priv->tree_selection);
+  g_signal_connect_swapped
+    (priv->apply_button, "clicked",
+     G_CALLBACK (jws_config_window_write_to_default_config_file), self);
   g_signal_connect (priv->tree_view, "row-activated",
                     G_CALLBACK (on_row_activated), self);
   g_signal_connect (priv->tree_view, "button-press-event",
@@ -1538,10 +1541,7 @@ save_activated (GSimpleAction *action,
                 GVariant *parameter,
                 gpointer win)
 {
-  gchar *config_path;
-  config_path = jws_get_default_config_file ();
-  jws_config_window_save_to_file (JWS_CONFIG_WINDOW (win), config_path);
-  g_free (config_path);
+  jws_config_window_write_to_default_config_file (JWS_CONFIG_WINDOW (win));
 }
 
 static void
@@ -2072,4 +2072,13 @@ jws_config_window_set_wallpaper_for_row (JwsConfigWindow *win,
   jws_set_wallpaper_from_file (path);
 
   g_free (path);
+}
+
+void
+jws_config_window_write_to_default_config_file (JwsConfigWindow *win)
+{
+  gchar *config_path;
+  config_path = jws_get_default_config_file ();
+  jws_config_window_save_to_file (win, config_path);
+  g_free (config_path);
 }
