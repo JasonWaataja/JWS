@@ -35,5 +35,9 @@ jws_config_application_get_type (void);
 JwsConfigApplication *
 jws_config_application_new ();
 
+/* This value must be cleaned with g_free ().  */
+gchar *
+jws_get_default_config_file ();
+
 #endif /* JWSCONFIGAPPLICATION_H */
 

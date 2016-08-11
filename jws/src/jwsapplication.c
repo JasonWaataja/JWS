@@ -591,5 +591,8 @@ jws_get_default_config_file ()
 
   /* Add more statements here if desired.  */
 
+  g_object_unref (G_OBJECT (home_dir));
+  g_object_unref (G_OBJECT (config_file));
+
   return config_file_path;
 }

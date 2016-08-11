@@ -48,6 +48,11 @@ jws_config_application_activate (GApplication *app)
   
   priv->win = jws_config_window_new (JWS_CONFIG_APPLICATION (app));
   gtk_window_present (GTK_WINDOW (priv->win));
+
+  gchar *config_path;
+  config_path = jws_get_default_config_file ();
+  jws_config_window_load_file (priv->win, config_path);
+  g_free (config_path);
 }
 
 static void
@@ -71,4 +76,20 @@ jws_config_application_new ()
   return g_object_new (JWS_TYPE_CONFIG_APPLICATION,
                        "application-id", "com.waataja.jws-config",
                        NULL);
+}
+
+gchar *
+jws_get_default_config_file ()
+{
+  GFile *home_dir = g_file_new_for_path (g_getenv ("HOME"));
+  GFile *config_file = g_file_get_child (home_dir, ".jws");
+
+  gchar *path = NULL;
+
+  path = g_file_get_path (config_file);
+
+  g_object_unref (G_OBJECT (home_dir));
+  g_object_unref (G_OBJECT (config_file));
+
+  return path;
 }

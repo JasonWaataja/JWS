@@ -96,4 +96,22 @@ GtkTreeRowReference *
 jws_config_window_get_previous_image_row (JwsConfigWindow *win,
                                           GtkTreeRowReference *row_ref);
 
+void
+jws_config_window_load_file (JwsConfigWindow *win, const char *path);
+
+void
+jws_config_window_save_to_file (JwsConfigWindow *win, const char *path);
+
+void
+jws_config_window_set_gui_from_info (JwsConfigWindow *win);
+
+void
+jws_config_window_set_info_from_gui (JwsConfigWindow *win);
+
+/* Returns whether or not the gui elemets create a coherent JwsInfo.  For
+ * example, if the time box is less than zero.  Displays messages if anything
+ * is off and returns TRUE if everything passes.  */
+gboolean
+jws_config_window_check_gui_consistency (JwsConfigWindow *win);
+
 #endif /* JWSCONFIGWINDOW_H */

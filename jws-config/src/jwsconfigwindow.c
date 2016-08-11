@@ -22,6 +22,7 @@ along with JWS.  If not, see <http://www.gnu.org/licenses/>.  */
 #include <glib/gi18n.h>
 
 #include "jwsconfigimageviewer.h"
+#include "jwsinfo.h"
 
 struct _JwsConfigWindow
 {
@@ -38,6 +39,9 @@ typedef struct _JwsConfigWindowPrivate JwsConfigWindowPrivate;
 struct _JwsConfigWindowPrivate
 {
   GtkWidget *rotate_button;
+  GtkWidget *time_button;
+  GtkWidget *time_unit_box;
+  GtkWidget *randomize_button;
   GtkWidget *apply_button;
   GtkWidget *add_button;
   GtkWidget *add_directory_button;
@@ -59,6 +63,8 @@ struct _JwsConfigWindowPrivate
 
   GThread *preview_thread;
   GAsyncQueue *preview_queue;
+
+  JwsInfo *current_info;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (JwsConfigWindow, jws_config_window,
@@ -124,6 +130,40 @@ on_up_button_clicked (JwsConfigWindow *win);
 static void
 on_down_button_clicked (JwsConfigWindow *win);
 
+static void
+open_activated (GSimpleAction *action,
+                GVariant *parameter,
+                gpointer win);
+
+static void
+save_activated (GSimpleAction *action,
+                GVariant *parameter,
+                gpointer win);
+
+static void
+save_as_activated (GSimpleAction *action,
+                   GVariant *parameter,
+                   gpointer win);
+
+static void
+quit_activated (GSimpleAction *action,
+                GVariant *parameter,
+                gpointer win);
+
+static void
+about_activated (GSimpleAction *action,
+       GVariant *parameter,
+       gpointer win);
+
+static GActionEntry win_entries[] =
+{
+    {"open", open_activated, NULL, NULL, NULL},
+    {"save", save_activated, NULL, NULL, NULL},
+    {"save-as", save_as_activated, NULL, NULL, NULL},
+    {"quit", quit_activated, NULL, NULL, NULL},
+    {"about", about_activated, NULL, NULL, NULL}
+};
+
 enum tree_store_columns
 {
   PATH_COLUMN = 0,
@@ -140,6 +180,10 @@ jws_config_window_init (JwsConfigWindow *self)
   priv = jws_config_window_get_instance_private (self);
 
   gtk_widget_init_template (GTK_WIDGET (self));
+
+  gtk_spin_button_set_range (GTK_SPIN_BUTTON (priv->time_button), 0, 99999);
+  gtk_spin_button_set_increments (GTK_SPIN_BUTTON (priv->time_button),
+                                  1, 10);
 
   priv->tree_store = gtk_tree_store_new (N_COLUMNS,
                                          G_TYPE_STRING, /* 0, path */
@@ -158,6 +202,7 @@ jws_config_window_init (JwsConfigWindow *self)
                                        preview_thread_run,
                                        self);
 
+  priv->current_info = jws_info_new ();
 
   g_signal_connect_swapped (priv->rotate_button, "toggled",
                             G_CALLBACK (on_rotate_button_toggled),
@@ -186,6 +231,11 @@ jws_config_window_init (JwsConfigWindow *self)
   g_signal_connect (priv->tree_selection, "changed",
                     G_CALLBACK (on_selection_changed), self);
 
+  g_action_map_add_action_entries (G_ACTION_MAP (self),
+                                   win_entries,
+                                   G_N_ELEMENTS (win_entries),
+                                   self);
+
   jws_config_window_show_optional_side_buttons (self, FALSE);
   jws_config_window_show_rotate_items (self, FALSE);
 }
@@ -199,6 +249,15 @@ jws_config_window_class_init (JwsConfigWindowClass *kclass)
   gtk_widget_class_bind_template_child_private (GTK_WIDGET_CLASS (kclass),
                                                 JwsConfigWindow,
                                                 apply_button);
+  gtk_widget_class_bind_template_child_private (GTK_WIDGET_CLASS (kclass),
+                                                JwsConfigWindow,
+                                                time_button);
+  gtk_widget_class_bind_template_child_private (GTK_WIDGET_CLASS (kclass),
+                                                JwsConfigWindow,
+                                                time_unit_box);
+  gtk_widget_class_bind_template_child_private (GTK_WIDGET_CLASS (kclass),
+                                                JwsConfigWindow,
+                                                randomize_button);
   gtk_widget_class_bind_template_child_private (GTK_WIDGET_CLASS (kclass),
                                                 JwsConfigWindow,
                                                 remove_button);
@@ -627,6 +686,7 @@ preview_thread_run (gpointer win)
                                   -1);
               GdkPixbuf *preview_src = gdk_pixbuf_new_from_file (path,
                                                                  NULL);
+              g_free (path);
               if (preview_src)
                 {
                   GdkPixbuf *preview;
@@ -763,7 +823,7 @@ jws_config_window_get_path_for_row (JwsConfigWindow *win,
 
   gtk_tree_path_free (tree_path);
 
-  return g_strdup (path);
+  return path;
 }
 
 static void
@@ -837,10 +897,6 @@ add_tree_path_to_slist (GSList *list, GtkTreeModel *model, GtkTreeIter *iter)
       GtkTreePath *tree_path;
       tree_path = gtk_tree_model_get_path (model, iter);
       new_list = g_slist_append (new_list, tree_path);
-      char *path;
-      gtk_tree_model_get (model, iter,
-                          PATH_COLUMN, &path,
-                          -1);
     }
   else
     {
@@ -1276,4 +1332,340 @@ on_down_button_clicked (JwsConfigWindow *win)
     }
 
   g_list_free_full (selected_list, (GDestroyNotify) gtk_tree_path_free);
+}
+
+void
+jws_config_window_load_file (JwsConfigWindow *win,
+                             const gchar *path)
+{
+  JwsConfigWindowPrivate *priv;
+  priv = jws_config_window_get_instance_private (win);
+  
+  gboolean status;
+  status = jws_info_set_from_file (priv->current_info, path);
+
+  if (status)
+    {
+      jws_config_window_set_gui_from_info (win);
+    }
+  else
+    {
+      GtkWidget *dialog;
+      dialog = gtk_message_dialog_new (GTK_WINDOW (win),
+                                       GTK_DIALOG_MODAL,
+                                       GTK_MESSAGE_ERROR,
+                                       GTK_BUTTONS_OK,
+                                       _("Error loading file %s."),
+                                       path);
+      gtk_dialog_run (GTK_DIALOG (dialog));
+      gtk_widget_destroy (dialog);
+    }
+}
+
+void
+jws_config_window_set_gui_from_info (JwsConfigWindow *win)
+{
+  JwsConfigWindowPrivate *priv;
+  priv = jws_config_window_get_instance_private (win);
+  
+  gboolean rotate_image;
+  rotate_image = jws_info_get_rotate_image (priv->current_info);
+
+  int rotate_seconds;
+  rotate_seconds = jws_info_get_rotate_seconds (priv->current_info);
+
+  gboolean randomize_order;
+  randomize_order = jws_info_get_randomize_order (priv->current_info);
+
+  GList *file_list;
+  file_list = jws_info_get_file_list (priv->current_info);
+
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (priv->rotate_button),
+                                rotate_image);
+  jws_config_window_show_rotate_items (win, rotate_image);
+
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON (priv->time_button),
+                             rotate_seconds);
+  /* 0 should be the index for seconds.  */
+  gtk_combo_box_set_active (GTK_COMBO_BOX (priv->time_unit_box), 0);
+
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (priv->randomize_button),
+                                randomize_order);
+
+  gtk_tree_store_clear (priv->tree_store);
+  GList *iter;
+  for (iter = file_list; iter; iter = g_list_next (iter))
+    {
+      jws_config_window_add_file (win, iter->data);
+    }
+}
+
+void
+jws_config_window_set_info_from_gui (JwsConfigWindow *win)
+{
+  JwsConfigWindowPrivate *priv;
+  priv = jws_config_window_get_instance_private (win);
+  
+  gboolean rotate_image;
+  rotate_image = gtk_toggle_button_get_active
+    (GTK_TOGGLE_BUTTON (priv->rotate_button));
+
+  int seconds_multiplier = 1;
+  gchar *current_text;
+  current_text = gtk_combo_box_text_get_active_text
+    (GTK_COMBO_BOX_TEXT (priv->time_unit_box));
+
+  if (g_str_equal (current_text, "Seconds"))
+    {
+      seconds_multiplier = 1;
+    }
+  else if (g_str_equal (current_text, "Minutes"))
+    {
+      seconds_multiplier = 60;
+    }
+  else if (g_str_equal (current_text, "Hours"))
+    {
+      seconds_multiplier = 60 * 60;
+    }
+
+  int time_value;
+  time_value = gtk_spin_button_get_value_as_int
+    (GTK_SPIN_BUTTON (priv->time_button));
+
+  int rotate_seconds;
+  rotate_seconds = time_value * seconds_multiplier;
+
+  gboolean randomize_order;
+  randomize_order = gtk_toggle_button_get_active
+    (GTK_TOGGLE_BUTTON (priv->randomize_button));
+
+  GtkTreeModel *as_model;
+  as_model = GTK_TREE_MODEL (priv->tree_store);
+
+  GList *file_list = NULL;
+  GtkTreeIter iter;
+  gboolean is_valid;
+  is_valid = gtk_tree_model_get_iter_first (as_model, &iter);
+
+  for (; is_valid; is_valid = gtk_tree_model_iter_next (as_model, &iter))
+    {
+      gchar *path;
+      gtk_tree_model_get (as_model, &iter,
+                          PATH_COLUMN, &path,
+                          -1);
+      file_list = g_list_append (file_list, path);
+    }
+  
+  jws_info_set_rotate_image (priv->current_info, rotate_image);
+  jws_info_set_rotate_seconds (priv->current_info, rotate_seconds);
+  jws_info_set_randomize_order (priv->current_info, rotate_seconds);
+  jws_info_set_file_list (priv->current_info, file_list);
+}
+
+static void
+open_activated (GSimpleAction *action,
+                GVariant *parameter,
+                gpointer win)
+{
+  GtkWidget *dialog;
+  dialog = gtk_file_chooser_dialog_new (_("Choose File"),
+                                        GTK_WINDOW (win),
+                                        GTK_FILE_CHOOSER_ACTION_OPEN,
+                                        _("Open"),
+                                        GTK_RESPONSE_ACCEPT,
+                                        NULL);
+  gtk_file_chooser_set_select_multiple (GTK_FILE_CHOOSER (dialog), FALSE);
+  gchar *home_dir;
+  home_dir = get_home_directory ();
+  gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (dialog), home_dir);
+  g_free (home_dir);
+
+  int response;
+  response = gtk_dialog_run (GTK_DIALOG (dialog));
+
+  gchar *path = NULL;
+  
+  if (response == GTK_RESPONSE_ACCEPT)
+    {
+      path = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
+    }
+
+  if (path)
+    {
+      jws_config_window_load_file (JWS_CONFIG_WINDOW (win), path);
+    }
+  g_free (path);
+
+  gtk_widget_destroy (dialog);
+}
+
+static void
+save_activated (GSimpleAction *action,
+                GVariant *parameter,
+                gpointer win)
+{
+  gchar *config_path;
+  config_path = jws_get_default_config_file ();
+  jws_config_window_save_to_file (JWS_CONFIG_WINDOW (win), config_path);
+  g_free (config_path);
+}
+
+static void
+save_as_activated (GSimpleAction *action,
+                   GVariant *parameter,
+                   gpointer win)
+{
+  GtkWidget *dialog;
+  dialog = gtk_file_chooser_dialog_new (_("Save as"),
+                                        GTK_WINDOW (win),
+                                        GTK_FILE_CHOOSER_ACTION_SAVE,
+                                        _("Save"), GTK_RESPONSE_ACCEPT,
+                                        NULL);
+
+  gtk_file_chooser_set_select_multiple (GTK_FILE_CHOOSER (dialog), FALSE);
+
+  gchar *home_dir;
+  home_dir = get_home_directory ();
+  gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (dialog), home_dir);
+  g_free (home_dir);
+
+  int response;
+  response = gtk_dialog_run (GTK_DIALOG (dialog));
+
+  gchar *path = NULL;
+
+  if (response == GTK_RESPONSE_ACCEPT)
+    {
+      path = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
+    }
+
+  gtk_widget_destroy (dialog);
+
+  if (path)
+    {
+      jws_config_window_save_to_file (JWS_CONFIG_WINDOW (win), path);
+      g_free (path);
+    }
+}
+
+static void
+quit_activated (GSimpleAction *action,
+                GVariant *parameter,
+                gpointer win)
+{
+  gtk_widget_destroy (win);
+}
+
+static void
+about_activated (GSimpleAction *action,
+       GVariant *parameter,
+       gpointer win)
+{
+}
+
+gboolean
+jws_config_window_check_gui_consistency (JwsConfigWindow *win)
+{
+  JwsConfigWindowPrivate *priv;
+  priv = jws_config_window_get_instance_private (win);
+  
+  int time_value;
+  time_value = gtk_spin_button_get_value_as_int
+    (GTK_SPIN_BUTTON (priv->time_button));
+
+  gboolean rotate_image;
+  rotate_image = gtk_toggle_button_get_active
+    (GTK_TOGGLE_BUTTON (priv->rotate_button));
+
+  if (rotate_image && time_value <= 0)
+    {
+      GtkWidget *dialog;
+      dialog = gtk_message_dialog_new (GTK_WINDOW (win),
+                                       GTK_DIALOG_MODAL,
+                                       GTK_MESSAGE_WARNING,
+                                       GTK_BUTTONS_OK,
+                                       _("Error, time is non-positive."));
+      gtk_dialog_run (GTK_DIALOG (dialog));
+      gtk_widget_destroy (dialog);
+      return FALSE;
+    }
+
+  int file_count;
+  file_count = gtk_tree_model_iter_n_children
+    (GTK_TREE_MODEL (priv->tree_store),
+     NULL);
+
+  if (file_count <= 0)
+    {
+      GtkWidget *dialog;
+      dialog = gtk_message_dialog_new (GTK_WINDOW (win),
+                                       GTK_DIALOG_MODAL,
+                                       GTK_MESSAGE_WARNING,
+                                       GTK_BUTTONS_OK,
+                                       _("Error, you must select a file."));
+      gtk_dialog_run (GTK_DIALOG (dialog));
+      gtk_widget_destroy (dialog);
+      return FALSE;
+    }
+
+  if (!rotate_image && file_count > 1)
+    {
+      GtkWidget *dialog;
+      dialog = gtk_message_dialog_new (GTK_WINDOW (win),
+                                       GTK_DIALOG_MODAL,
+                                       GTK_MESSAGE_WARNING,
+                                       GTK_BUTTONS_OK,
+                                       _("Warning, you don't have rotate "
+                                         "image selected but multiple files "
+                                         "are selected. Only the first one "
+                                         "will be used."));
+      gtk_dialog_run (GTK_DIALOG (dialog));
+      gtk_widget_destroy (dialog);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+void
+jws_config_window_save_to_file (JwsConfigWindow *win, const char *path)
+{
+  JwsConfigWindowPrivate *priv;
+  priv = jws_config_window_get_instance_private (win);
+  
+
+  gboolean is_valid;
+  is_valid = jws_config_window_check_gui_consistency (win);
+
+  if (is_valid)
+    {
+      jws_config_window_set_info_from_gui (win);
+      gboolean status;
+      status = jws_info_write_to_file (priv->current_info, path);
+
+      if (!status)
+        {
+          GtkWidget *dialog;
+          dialog = gtk_message_dialog_new (GTK_WINDOW (win),
+                                           GTK_DIALOG_MODAL,
+                                           GTK_MESSAGE_ERROR,
+                                           GTK_BUTTONS_OK,
+                                           _("Error writing file to %s.\n"),
+                                           path);
+          gtk_dialog_run (GTK_DIALOG (dialog));
+          gtk_widget_destroy (dialog);
+        }
+      else
+        {
+          GtkWidget *dialog;
+          dialog = gtk_message_dialog_new (GTK_WINDOW (win),
+                                           GTK_DIALOG_MODAL,
+                                           GTK_MESSAGE_INFO,
+                                           GTK_BUTTONS_OK,
+                                           _("Wrote to file %s.\n"),
+                                           path);
+          gtk_dialog_run (GTK_DIALOG (dialog));
+          gtk_widget_destroy (dialog);
+        }
+    }
 }
