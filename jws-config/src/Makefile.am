@@ -1,7 +1,7 @@
 
 AM_CFLAGS = $(GTK_CFLAGS)
 bin_PROGRAMS = jws-config
-jws_config_SOURCES = main.c jwsconfigapplication.c jwsconfigwindow.c resources.c jwsconfigimageviewer.c jwsinfo.c
+jws_config_SOURCES = main.c jwsconfigapplication.c jwsconfigwindow.c resources.c jwsconfigimageviewer.c jwsinfo.c jwssetter.c
 jws_config_LDADD = $(GTK_LIBS)
 
 BUILT_SOURCES = resources.c

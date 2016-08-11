@@ -23,6 +23,7 @@ along with JWS.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "jwsconfigimageviewer.h"
 #include "jwsinfo.h"
+#include "jwssetter.h"
 
 struct _JwsConfigWindow
 {
@@ -182,6 +183,9 @@ on_down_menu_activated (WindowRowEntry *entry);
 
 static void
 on_remove_menu_activated (WindowRowEntry *entry);
+
+static void
+on_set_menu_activated (WindowRowEntry *entry);
 
 static GActionEntry win_entries[] =
 {
@@ -1790,15 +1794,28 @@ on_tree_view_button_press (GtkWidget *tree_view,
     {
       GtkWidget *open_item;
       open_item = gtk_menu_item_new_with_label (_("Open"));
-      WindowRowEntry *entry = g_new (WindowRowEntry, 1);
-      entry->win = win;
-      entry->row_ref = gtk_tree_row_reference_copy (row_ref);
+      WindowRowEntry *open_entry = g_new (WindowRowEntry, 1);
+      open_entry->win = win;
+      open_entry->row_ref = gtk_tree_row_reference_copy (row_ref);
       g_signal_connect_data (open_item, "activate",
                              G_CALLBACK (on_open_menu_activated),
-                             entry,
+                             open_entry,
                              (GClosureNotify) window_row_entry_free,
                              G_CONNECT_SWAPPED);
       gtk_menu_shell_append (GTK_MENU_SHELL (item_menu), open_item);
+      item_count++;
+
+      GtkWidget *set_item;
+      set_item = gtk_menu_item_new_with_label (_("Try as wallpaper"));
+      WindowRowEntry *set_entry = g_new (WindowRowEntry, 1);
+      set_entry->win = win;
+      set_entry->row_ref = gtk_tree_row_reference_copy (row_ref);
+      g_signal_connect_data (set_item, "activate",
+                             G_CALLBACK (on_set_menu_activated),
+                             set_entry,
+                             (GClosureNotify) window_row_entry_free,
+                             G_CONNECT_SWAPPED);
+      gtk_menu_shell_append (GTK_MENU_SHELL (item_menu), set_item);
       item_count++;
     }
 
@@ -2015,8 +2032,44 @@ on_remove_menu_activated (WindowRowEntry *entry)
 }
 
 static void
+on_set_menu_activated (WindowRowEntry *entry)
+{
+  jws_config_window_set_wallpaper_for_row (entry->win,
+                                           entry->row_ref);
+}
+
+static void
 window_row_entry_free (WindowRowEntry *entry)
 {
   gtk_tree_row_reference_free (entry->row_ref);
   g_free (entry);
+}
+
+void
+jws_config_window_set_wallpaper_for_row (JwsConfigWindow *win,
+                                         GtkTreeRowReference *row_ref)
+{
+  if (!gtk_tree_row_reference_valid (row_ref))
+    return;
+
+  JwsConfigWindowPrivate *priv;
+  priv = jws_config_window_get_instance_private (win);
+  
+  GtkTreeModel *model;
+  model = GTK_TREE_MODEL (priv->tree_store);
+
+  GtkTreePath *tree_path;
+  tree_path = gtk_tree_row_reference_get_path (row_ref);
+
+  GtkTreeIter iter;
+  gtk_tree_model_get_iter (model, &iter, tree_path);
+
+  gchar *path = NULL;
+  gtk_tree_model_get (model, &iter,
+                      PATH_COLUMN, &path,
+                      -1);
+
+  jws_set_wallpaper_from_file (path);
+
+  g_free (path);
 }

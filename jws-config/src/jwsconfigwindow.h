@@ -126,4 +126,8 @@ jws_config_window_set_info_from_gui (JwsConfigWindow *win);
 gboolean
 jws_config_window_check_gui_consistency (JwsConfigWindow *win);
 
+void
+jws_config_window_set_wallpaper_for_row (JwsConfigWindow *win,
+                                         GtkTreeRowReference *row_ref);
+
 #endif /* JWSCONFIGWINDOW_H */
