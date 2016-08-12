@@ -49,11 +49,24 @@ able to add a wallpaper to a directory in the top level and have it appear
 without additional configuration. If you want to only use some files from a
 subdirectory, then specify them as toplevel images.
 
+To use JWS-Config, open the program and you'll be greeted by t gui tool. This
+can be used to add files, directories, sort items, and remove them. It is
+useful because it allows you to see the images in the tool and it also allows
+you to open them by double clicking on an image which opens the image viewer.
+
+The image viewer can display the image at a small scaled size or the native
+size. You can go to the next and previous images by clicking on the image with
+the primary and middle buttons respectively.
+
 ### Configuration
-The configuration has two parts: the settings section and files section.
-Parsing of thet files sections will be started by a single line with the word
+The recommended way to configure JWS is through running JWS-Config. All that
+does is write to ~/.jws so writing the file yourself is completely fine.
+
+The configuration file has two parts: the settings section and files section.
+Parsing of the files sections will be started by a single line with the word
 "files" on it. No settings are necessary as they all have defaults but you
-should set them to what you want.
+should set them to what you want and that also means you don't have to install
+JWS-Config at all.
 
 #### Options
 A line starting with `rotate-image` will mean that if more than one image is
