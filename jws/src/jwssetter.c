@@ -1,5 +1,7 @@
 /* jwssetter.c - set wallpaper
 
+Copyright (C) 2016 Jason Waataja
+
 This file is part of JWS.
 
 JWS is free software: you can redistribute it and/or modify
