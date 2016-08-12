@@ -3,7 +3,7 @@ A small project for setting up wallpapers on minimal window managers or any
 desktop environment that supports setting wallpapers with feh. There's a
 command line utility called jws with acts as the daemon for setting the
 wallpaper and is supposed to be started with the WM or DE with the command
-jws or jws -c /path/to/config/file. JWS-Config is a graphical tool for
+`jws` or `jws -c /path/to/config/file`. JWS-Config is a graphical tool for
 creating the config file that is used by JWS.
 
 ## Installation
@@ -12,8 +12,8 @@ autotools so the procedure will be the same.
 
 ### Dependencies
 Both programs require are written in C. You'll need GLib, pkg-config,
-autotools, and feh as well as gtk for JWS-Config. Gettext is a requirenment
-for JWS and will be in the future for JWS-Config.
+autotools, and feh as well as GTK+ 3 for JWS-Config. At least for now, gettext
+is a requirenment for JWS and will be in the future for JWS-Config.
 
 On Arch Linux, these can be installed with just `feh`, `base-devel`, `glib2`,
 and `gtk3`.
