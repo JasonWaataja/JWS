@@ -133,4 +133,10 @@ jws_config_window_set_wallpaper_for_row (JwsConfigWindow *win,
 void
 jws_config_window_write_to_default_config_file (JwsConfigWindow *win);
 
+GtkTreePath *
+jws_get_next_tree_path_item (GtkTreeModel *model, GtkTreePath *tree_path);
+
+GtkTreePath *
+jws_get_previous_tree_path_item (GtkTreeModel *model, GtkTreePath *tree_path);
+
 #endif /* JWSCONFIGWINDOW_H */

@@ -968,77 +968,53 @@ jws_config_window_get_next_image_row (JwsConfigWindow *win,
   GtkTreeModel *tree_model;
   tree_model = GTK_TREE_MODEL (priv->tree_store);
 
-  GSList *image_list = NULL;
+  GtkTreePath *tree_path;
+  tree_path = gtk_tree_row_reference_get_path (row_ref);
 
-  GtkTreeIter iter;
-  gboolean is_empty;
+  GtkTreePath *new_path;
+  new_path = jws_get_next_tree_path_item (tree_model, tree_path);
 
-  is_empty = !gtk_tree_model_get_iter_first(tree_model, &iter);
+  gboolean found_new_path = FALSE;
 
-  if (!is_empty)
+  while (!found_new_path && gtk_tree_path_compare (tree_path, new_path) != 0)
     {
-      gboolean has_next;
-      has_next = gtk_tree_model_get_iter_first (tree_model, &iter);
-      for (; has_next;
-           has_next = gtk_tree_model_iter_next (tree_model, &iter))
+      GtkTreeIter iter;
+      gtk_tree_model_get_iter (tree_model, &iter, new_path);
+
+      gboolean is_directory;
+      gtk_tree_model_get (tree_model, &iter,
+                          IS_DIRECTORY_COLUMN, &is_directory,
+                          -1);
+
+      if (!is_directory)
         {
-          image_list = add_tree_path_to_slist (image_list, tree_model, &iter);
+          found_new_path = TRUE;
         }
-      if (image_list)
+      else
         {
-          if (gtk_tree_row_reference_valid (row_ref))
-            {
-              GtkTreePath *start_path;
-              start_path = gtk_tree_row_reference_get_path (row_ref);
-              GtkTreePath *current_path = NULL;
-              GSList *start_node = NULL;
+          GtkTreePath *temp_path;
+          temp_path = new_path;
 
-              GSList *list_iter = NULL;
-              gboolean found_start = FALSE;
-              for (list_iter = image_list; list_iter != NULL && !found_start;)
-                {
-                  current_path = list_iter->data;
-                  if (gtk_tree_path_compare (start_path, current_path) == 0)
-                    {
-                      found_start = TRUE;
-                      start_node = list_iter;
-                    }
-                  else
-                    {
-                      list_iter = g_slist_next (list_iter);
-                    }
-                }
-              if (found_start)
-                {
-                  list_iter = start_node;
-                  list_iter = g_slist_next (list_iter);
+          new_path = jws_get_next_tree_path_item (tree_model, temp_path);
 
-                  if (list_iter == NULL)
-                    list_iter = image_list;
-
-                  current_path = list_iter->data;
-
-                  if (gtk_tree_path_compare (start_path, current_path) != 0)
-                    {
-                      new_ref = gtk_tree_row_reference_new (tree_model,
-                                                            current_path);
-                    }
-                }
-            }
-          for (GSList *list_iter = image_list; list_iter;
-               list_iter = g_slist_next (list_iter))
-            {
-              gtk_tree_path_free (list_iter->data);
-            }
-          g_slist_free (image_list);
+          gtk_tree_path_free (temp_path);
         }
     }
+
+  if (new_path)
+    {
+      new_ref = gtk_tree_row_reference_new (tree_model, new_path);
+      gtk_tree_path_free (new_path);
+    }
+
+  gtk_tree_path_free (tree_path);
+
   return new_ref;
 }
 
 GtkTreeRowReference *
 jws_config_window_get_previous_image_row (JwsConfigWindow *win,
-                                      GtkTreeRowReference *row_ref)
+                                          GtkTreeRowReference *row_ref)
 {
   JwsConfigWindowPrivate *priv;
   priv = jws_config_window_get_instance_private (win);
@@ -1048,72 +1024,45 @@ jws_config_window_get_previous_image_row (JwsConfigWindow *win,
   GtkTreeModel *tree_model;
   tree_model = GTK_TREE_MODEL (priv->tree_store);
 
-  GSList *image_list = NULL;
+  GtkTreePath *tree_path;
+  tree_path = gtk_tree_row_reference_get_path (row_ref);
 
-  GtkTreeIter iter;
-  gboolean is_empty;
+  GtkTreePath *new_path;
+  new_path = jws_get_previous_tree_path_item (tree_model, tree_path);
 
-  is_empty = !gtk_tree_model_get_iter_first(tree_model, &iter);
+  gboolean found_new_path = FALSE;
 
-  if (!is_empty)
+  while (!found_new_path && gtk_tree_path_compare (tree_path, new_path) != 0)
     {
-      gboolean has_next;
-      has_next = gtk_tree_model_get_iter_first (tree_model, &iter);
-      for (; has_next;
-           has_next = gtk_tree_model_iter_next (tree_model, &iter))
+      GtkTreeIter iter;
+      gtk_tree_model_get_iter (tree_model, &iter, new_path);
+
+      gboolean is_directory;
+      gtk_tree_model_get (tree_model, &iter,
+                          IS_DIRECTORY_COLUMN, &is_directory,
+                          -1);
+      
+      if (!is_directory)
         {
-          image_list = add_tree_path_to_slist (image_list, tree_model, &iter);
+          found_new_path = TRUE;
         }
-      if (image_list)
+      else
         {
-          image_list = g_slist_reverse (image_list);
-          if (gtk_tree_row_reference_valid (row_ref))
-            {
-              GtkTreePath *start_path;
-              start_path = gtk_tree_row_reference_get_path (row_ref);
-              GtkTreePath *current_path = NULL;
-              GSList *start_node = NULL;
+          GtkTreePath *temp_path;
+          temp_path = new_path;
+          
+          new_path = jws_get_previous_tree_path_item (tree_model, temp_path);
 
-              GSList *list_iter = NULL;
-              gboolean found_start = FALSE;
-              for (list_iter = image_list; list_iter != NULL && !found_start;)
-                {
-                  current_path = list_iter->data;
-                  if (gtk_tree_path_compare (start_path, current_path) == 0)
-                    {
-                      found_start = TRUE;
-                      start_node = list_iter;
-                    }
-                  else
-                    {
-                      list_iter = g_slist_next (list_iter);
-                    }
-                }
-              if (found_start)
-                {
-                  list_iter = start_node;
-                  list_iter = g_slist_next (list_iter);
-
-                  if (list_iter == NULL)
-                    list_iter = image_list;
-
-                  current_path = list_iter->data;
-
-                  if (gtk_tree_path_compare (start_path, current_path) != 0)
-                    {
-                      new_ref = gtk_tree_row_reference_new (tree_model,
-                                                            current_path);
-                    }
-                }
-            }
-          for (GSList *list_iter = image_list; list_iter;
-               list_iter = g_slist_next (list_iter))
-            {
-              gtk_tree_path_free (list_iter->data);
-            }
-          g_slist_free (image_list);
+          gtk_tree_path_free (temp_path);
         }
     }
+
+  if (new_path)
+    {
+      new_ref = gtk_tree_row_reference_new (tree_model, new_path);
+      gtk_tree_path_free (new_path);
+    }
+
   return new_ref;
 }
 
@@ -2081,4 +2030,141 @@ jws_config_window_write_to_default_config_file (JwsConfigWindow *win)
   config_path = jws_get_default_config_file ();
   jws_config_window_save_to_file (win, config_path);
   g_free (config_path);
+}
+
+GtkTreePath *
+jws_get_next_tree_path_item (GtkTreeModel *model, GtkTreePath *tree_path)
+{
+  gboolean iter_exists;
+
+  GtkTreeIter iter;
+  iter_exists = gtk_tree_model_get_iter (model, &iter, tree_path);
+
+  if (!iter_exists)
+    return NULL;
+
+  GtkTreePath *current_path;
+  current_path = gtk_tree_path_copy (tree_path);
+
+  if (gtk_tree_model_iter_has_child (model, &iter))
+    {
+      gtk_tree_path_down (current_path);
+      return current_path;
+    }
+
+  gboolean should_continue = TRUE;
+
+  while (should_continue)
+    {
+      gtk_tree_model_get_iter (model, &iter, current_path);
+
+      int depth;
+      depth = gtk_tree_path_get_depth (current_path);
+
+      int node_count = 0;
+
+      if (depth > 1)
+        {
+          GtkTreeIter parent_iter;
+          gtk_tree_model_iter_parent (model, &parent_iter, &iter);
+          node_count = gtk_tree_model_iter_n_children (model, &parent_iter);
+        }
+      else
+        {
+          node_count = gtk_tree_model_iter_n_children (model, NULL);
+        }
+
+      gint *indices;
+      indices = gtk_tree_path_get_indices (current_path);
+
+      int position;
+      position = indices[depth - 1];
+
+      if (position < node_count - 1)
+        {
+          gtk_tree_path_next (current_path);
+          should_continue = FALSE;
+        }
+      else if (depth == 1)
+        {
+          gtk_tree_path_free (current_path);
+          current_path = gtk_tree_path_new_first ();
+          should_continue = FALSE;
+        }
+      else
+        {
+          gtk_tree_path_up (current_path);
+        }
+    }
+
+  return current_path;
+}
+
+GtkTreePath *
+jws_get_previous_tree_path_item (GtkTreeModel *model, GtkTreePath *tree_path)
+{
+  gboolean iter_exists;
+
+  GtkTreeIter iter;
+  iter_exists = gtk_tree_model_get_iter (model, &iter, tree_path);
+
+  if (!iter_exists)
+    return NULL;
+
+  GtkTreePath *current_path;
+  current_path = gtk_tree_path_copy (tree_path);
+
+  if (gtk_tree_model_iter_has_child (model, &iter))
+    {
+      int node_count;
+      node_count = gtk_tree_model_iter_n_children (model, &iter);
+
+      GtkTreeIter child_iter;
+      gtk_tree_model_iter_nth_child (model, &child_iter, &iter,
+                                     node_count - 1);
+
+      gtk_tree_path_free (current_path);
+      current_path = gtk_tree_model_get_path (model, &child_iter);
+
+      return current_path;
+    }
+
+  gboolean should_continue = TRUE;
+
+  while (should_continue)
+    {
+      gtk_tree_model_get_iter (model, &iter, current_path);
+
+      int depth;
+      depth = gtk_tree_path_get_depth (current_path);
+
+      gint *indices;
+      indices = gtk_tree_path_get_indices (current_path);
+
+      int position;
+      position = indices[depth - 1];
+
+      if (position > 0)
+        {
+          gtk_tree_path_prev (current_path);
+          should_continue = FALSE;
+        }
+      else if (depth == 1)
+        {
+          gtk_tree_path_free (current_path);
+
+          int node_count;
+          node_count = gtk_tree_model_iter_n_children (model, NULL);
+
+          current_path = gtk_tree_path_new_from_indices (node_count - 1, -1);
+
+          should_continue = FALSE;
+        }
+      else
+        {
+          gtk_tree_path_up (current_path);
+        }
+    }
+
+  return current_path;
 }

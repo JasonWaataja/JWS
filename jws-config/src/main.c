@@ -17,7 +17,7 @@ main (int argc,
   int status;
   status = g_application_run (G_APPLICATION (app), argc, argv);
 
-  g_object_unref (app);
+  g_object_unref (G_OBJECT (app));
 
   return status;
 }
