@@ -55,45 +55,6 @@ struct _JwsCommandLineOptions
   gint time;
 };
 
-typedef struct _JwsTimeValue JwsTimeValue;
-
-struct _JwsTimeValue
-{
-  int hours;
-  int minutes;
-  int seconds;
-};
-
-#define JWS_SECONDS_PER_MINUTE 60
-#define JWS_MINUTES_PER_HOUR 60
-#define JWS_SECONDS_PER_HOUR (JWS_SECONDS_PER_MINUTE * JWS_MINUTES_PER_HOUR)
-
-JwsTimeValue *
-jws_time_value_new ();
-
-JwsTimeValue *
-jws_time_value_new_for_seconds (int seconds);
-
-JwsTimeValue *
-jws_time_value_new_for_values (int hours, int minutes, int seconds);
-
-void
-jws_time_value_free (JwsTimeValue *time);
-
-JwsTimeValue *
-jws_time_value_copy (JwsTimeValue *time);
-
-int
-jws_time_value_total_seconds (JwsTimeValue *time);
-
-/* False if either is null.  */
-gboolean
-jws_time_value_equal (JwsTimeValue *a, JwsTimeValue *b);
-
-/* Does nothing if the time value is less than or equal to zero.  */
-void
-jws_time_value_to_simplest_form (JwsTimeValue *time);
-
 JwsInfo *
 jws_application_get_current_info (JwsApplication *app);
 

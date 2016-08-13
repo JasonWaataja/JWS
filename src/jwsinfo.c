@@ -424,3 +424,87 @@ print_jws_info (JwsInfo *info)
       g_print (_("Error: Trying to print null info\n"));
     }
 }
+
+int
+jws_time_value_total_seconds (JwsTimeValue *time)
+{
+  int total = 0;
+  if (time)
+    {
+      total += time->seconds;
+      total += JWS_SECONDS_PER_MINUTE * time->minutes;
+      total += JWS_SECONDS_PER_HOUR * time->hours;
+    }
+  return total;
+}
+
+gboolean
+jws_time_value_equal (JwsTimeValue *a, JwsTimeValue *b)
+{
+  if (!a || !b)
+    return FALSE;
+
+  return (jws_time_value_total_seconds (a) == jws_time_value_total_seconds (b));
+}
+
+void
+jws_time_value_to_simplest_form (JwsTimeValue *time)
+{
+  if (!time)
+    return;
+
+  int total_seconds;
+  total_seconds = jws_time_value_total_seconds (time);
+
+  if (total_seconds <= 0)
+    return;
+
+  int hours = total_seconds / JWS_SECONDS_PER_HOUR;
+  total_seconds -= hours * JWS_SECONDS_PER_HOUR;
+
+  int minutes = total_seconds / JWS_SECONDS_PER_MINUTE;
+  total_seconds -= minutes * JWS_SECONDS_PER_MINUTE;
+
+  time->hours = hours;
+  time->minutes = minutes;
+  time->seconds = total_seconds;
+}
+
+JwsTimeValue *
+jws_time_value_new ()
+{
+  return jws_time_value_new_for_values (0, 0, 0);
+}
+
+JwsTimeValue *
+jws_time_value_new_for_seconds (int seconds)
+{
+  JwsTimeValue *time;
+  time = jws_time_value_new_for_values (0, 0, seconds);
+  jws_time_value_to_simplest_form (time);
+
+  return time;
+}
+
+JwsTimeValue *
+jws_time_value_new_for_values (int hours, int minutes, int seconds)
+{
+  JwsTimeValue *time = NULL;
+  time = g_new (JwsTimeValue, 1);
+  time->hours = hours;
+  time->minutes = minutes;
+  time->seconds = seconds;
+  
+  return time;
+}
+
+JwsTimeValue *
+jws_time_value_copy (JwsTimeValue *time)
+{
+  if (!time)
+    return NULL;
+
+  return jws_time_value_new_for_values (time->hours,
+                                        time->minutes,
+                                        time->seconds);
+}
