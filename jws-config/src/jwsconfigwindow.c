@@ -1571,6 +1571,7 @@ about_activated (GSimpleAction *action,
                          "authors", authors,
                          "copyright", "Copyright (C) 2016 Jason Waataja",
                          "license", license,
+                         "version", "Version 1.0",
                          NULL);
 
 }
