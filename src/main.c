@@ -76,7 +76,7 @@ static GOptionEntry option_entries[] =
 void
 set_command_line_options (JwsApplication *app)
 {
-  jws_command_line_options *options;
+  JwsCommandLineOptions *options;
   options = jws_application_get_command_line_options (app);
   option_entries[0].arg_data = &(options->config_file);
   option_entries[1].arg_data = &(options->rotate_image);
