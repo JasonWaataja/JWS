@@ -4,28 +4,21 @@ desktop environment that supports setting wallpapers with feh. There's a
 command line utility called jws with acts as the daemon for setting the
 wallpaper and is supposed to be started with the WM or DE with the command
 `jws` or `jws -c /path/to/config/file`. JWS-Config is a graphical tool for
-creating the config file that is used by JWS.
+creating the config file that is used by JWS. It is highly recommended that
+you check it out and use it to configure JWS. JWS uses feh as a backend to set
+wallpapers and its main benefit is ease of configuration and management (via
+JWS-Config).
 
 ## Installation
-JWS and JWS-Config can and must be installed separately. They both use
-autotools so the procedure will be the same.
+JWS is written in C and built using autotools. It also depends on GLib as well
+as gettext. On Arch Linux, the dependencies can be installed with the packages
+`base-devel`, `glib2`, and `feh`. On Ubuntu, try `build-essential`, `feh`,
+`autotools-dev`, `autoconf` `autopoint`, and `libglib2.0-dev`. I don't know
+that it's those exactly so correct me if I'm wrong.
 
-### Dependencies
-Both programs require are written in C. You'll need GLib, pkg-config,
-autotools, and feh as well as GTK+ 3 for JWS-Config. At least for now, gettext
-is a requirenment for JWS and will be in the future for JWS-Config.
-
-On Arch Linux, these can be installed with just `feh`, `base-devel`, `glib2`,
-and `gtk3`.
-
-On Ubuntu, it's `feh`, `build-essential`, `autotools-dev`, `autoconf`,
-`autopoint`, `libglib2.0-dev`, `libgtk-3-dev`. Correct me if I'm wrong there.
-
-### Compiling
-For either program, cd into the directory with `cd jws` or `cd jws-confg`. Run
-`./autogen.sh`, `./configure`, `make`, and if installation to the system is
-desired: `sudo make install`.
-
+To compile and install the program, cd into the directory where you cloned the
+repository. Run `./autogen.sh`, `./configure`, `make`, and `make install`. You
+might need sudo for the last one.
 
 ## Usage
 The programs can be run with jws and jws-config. The jws program will look for
@@ -48,15 +41,6 @@ exlude or the list of files to include which is not what I want. I want to be
 able to add a wallpaper to a directory in the top level and have it appear
 without additional configuration. If you want to only use some files from a
 subdirectory, then specify them as toplevel images.
-
-To use JWS-Config, open the program and you'll be greeted by t gui tool. This
-can be used to add files, directories, sort items, and remove them. It is
-useful because it allows you to see the images in the tool and it also allows
-you to open them by double clicking on an image which opens the image viewer.
-
-The image viewer can display the image at a small scaled size or the native
-size. You can go to the next and previous images by clicking on the image with
-the primary and middle buttons respectively.
 
 ### Configuration
 The recommended way to configure JWS is through running JWS-Config. All that
