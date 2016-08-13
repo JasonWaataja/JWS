@@ -42,7 +42,7 @@ struct _JwsApplicationPrivate
 {
   gchar *config_file;
   JwsInfo *current_info;
-  jws_command_line_options cmd_options;
+  JwsCommandLineOptions cmd_options;
   GList *file_list;
 
   /* To get out of the main loop on the unix signal.  */
@@ -178,8 +178,8 @@ handle_local_options (GApplication *app,
   JwsApplicationPrivate *priv;
   priv = jws_application_get_instance_private (JWS_APPLICATION (app));
 
-  jws_command_line_options *as_cmd_options;
-  as_cmd_options = (jws_command_line_options *) cmd_options;
+  JwsCommandLineOptions *as_cmd_options;
+  as_cmd_options = (JwsCommandLineOptions *) cmd_options;
 
   if (as_cmd_options->config_file)
     {
@@ -244,7 +244,7 @@ jws_application_set_current_info (JwsApplication *app, JwsInfo *info)
     }
 }
 
-jws_command_line_options *
+JwsCommandLineOptions *
 jws_application_get_command_line_options (JwsApplication *app)
 {
   if (app)
@@ -262,7 +262,7 @@ jws_application_get_command_line_options (JwsApplication *app)
 
 void
 jws_application_set_command_line_options (JwsApplication *app,
-                                          jws_command_line_options *options)
+                                          JwsCommandLineOptions *options)
 {
   if (app && options)
     {
@@ -597,4 +597,88 @@ jws_get_default_config_file ()
   g_object_unref (G_OBJECT (config_file));
 
   return config_file_path;
+}
+
+int
+jws_time_value_total_seconds (JwsTimeValue *time)
+{
+  int total = 0;
+  if (time)
+    {
+      total += time->seconds;
+      total += JWS_SECONDS_PER_MINUTE * time->minutes;
+      total += JWS_SECONDS_PER_HOUR * time->hours;
+    }
+  return total;
+}
+
+gboolean
+jws_time_value_equal (JwsTimeValue *a, JwsTimeValue *b)
+{
+  if (!a || !b)
+    return FALSE;
+
+  return (jws_time_value_total_seconds (a) == jws_time_value_total_seconds (b));
+}
+
+void
+jws_time_value_to_simplest_form (JwsTimeValue *time)
+{
+  if (!time)
+    return;
+
+  int total_seconds;
+  total_seconds = jws_time_value_total_seconds (time);
+
+  if (total_seconds <= 0)
+    return;
+
+  int hours = total_seconds / JWS_SECONDS_PER_HOUR;
+  total_seconds -= hours * JWS_SECONDS_PER_HOUR;
+
+  int minutes = total_seconds / JWS_SECONDS_PER_MINUTE;
+  total_seconds -= minutes * JWS_SECONDS_PER_MINUTE;
+
+  time->hours = hours;
+  time->minutes = minutes;
+  time->seconds = total_seconds;
+}
+
+JwsTimeValue *
+jws_time_value_new ()
+{
+  return jws_time_value_new_for_values (0, 0, 0);
+}
+
+JwsTimeValue *
+jws_time_value_new_for_seconds (int seconds)
+{
+  JwsTimeValue *time;
+  time = jws_time_value_new_for_values (0, 0, seconds);
+  jws_time_value_to_simplest_form (time);
+
+  return time;
+}
+
+JwsTimeValue *
+jws_time_value_new_for_values (int hours, int minutes, int seconds)
+{
+  JwsTimeValue *time = NULL;
+  time = g_new (JwsTimeValue, 1);
+  time->hours = hours;
+  time->minutes = minutes;
+  time->seconds = seconds;
+  
+  return time;
+}
+
+JwsTimeValue *
+jws_time_value_copy (JwsTimeValue *time)
+{
+  if (!time)
+    return NULL;
+
+  return jws_time_value_new_for_values (time->hours,
+                                        time->minutes,
+                                        time->seconds);
 }
