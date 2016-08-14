@@ -40,7 +40,7 @@ typedef struct _JwsInfoPrivate JwsInfoPrivate;
 struct _JwsInfoPrivate
 {
   gboolean rotate_image;
-  guint rotate_seconds;
+  JwsTimeValue *rotate_time;
   gboolean randomize_order;
 
   GList *file_list;
@@ -71,6 +71,8 @@ jws_info_finalize (GObject *obj)
   g_list_free (priv->file_list);
   priv->file_list = NULL;
 
+  jws_time_value_free (priv->rotate_time);
+
   G_OBJECT_CLASS (jws_info_parent_class)->finalize (obj);
 }
 
@@ -81,7 +83,7 @@ jws_info_init (JwsInfo *self)
   priv = jws_info_get_instance_private (self);
 
   priv->rotate_image = TRUE;
-  priv->rotate_seconds = 60;
+  priv->rotate_time = jws_time_value_new_for_seconds (60);
   priv->randomize_order = TRUE;
 
   priv->file_list = NULL;
@@ -139,30 +141,29 @@ jws_info_set_rotate_image (JwsInfo *info, gboolean rotate_image)
     }
 }
 
-guint
-jws_info_get_rotate_seconds (JwsInfo *info)
+JwsTimeValue *
+jws_info_get_rotate_time (JwsInfo *info)
 {
-  if (info)
-    {
-      JwsInfoPrivate *priv;
-      priv = jws_info_get_instance_private (info);
-      return priv->rotate_seconds;
-    }
-  else
-    {
-      return 0;
-    }
+  if (!info)
+    return NULL;
+
+  JwsInfoPrivate *priv;
+  priv = jws_info_get_instance_private (info);
+  
+  return jws_time_value_copy (priv->rotate_time);
 }
 
 void
-jws_info_set_rotate_seconds (JwsInfo *info, guint rotate_seconds)
+jws_info_set_rotate_time (JwsInfo *info, JwsTimeValue *time)
 {
-  if (info)
-    {
-      JwsInfoPrivate *priv;
-      priv = jws_info_get_instance_private (info);
-      priv->rotate_seconds = rotate_seconds;
-    }
+  if (!info || !time)
+    return;
+
+  JwsInfoPrivate *priv;
+  priv = jws_info_get_instance_private (info);
+  
+  jws_time_value_free (priv->rotate_time);
+  priv->rotate_time = jws_time_value_copy (time);
 }
 
 gboolean
@@ -327,19 +328,49 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path)
             }
           else if (g_str_has_prefix (line, "time"))
             {
-              gchar **tokens;
-              tokens = g_strsplit_set (line, " \t\n", -1);
+              GRegex *regex;
+              regex = g_regex_new ("^time\\s+(\\S.*)$", 0, 0, NULL);
+              g_assert (regex);
 
-              if (tokens[1] == NULL)
+              GMatchInfo *match_info = NULL;
+              gboolean found_match;
+              found_match = g_regex_match (regex, line, 0, &match_info);
+
+              if (!found_match)
                 {
-                  g_printerr (_("No argument provided for \"time\"\n"));
+                  g_printerr (_("Error, incorrect time format: %s.\n"), line);
                 }
               else
                 {
-                  int as_int = atoi (tokens[1]);
-                  priv->rotate_seconds = MAX (as_int, 1);
+                  gchar *value;
+                  value = g_match_info_fetch (match_info, 1);
+                  if (value && strlen (value) > 0)
+                    {
+                      JwsTimeValue *rotate_time;
+                      rotate_time = jws_time_value_new_from_string (value);
+                      if (!rotate_time)
+                        {
+                          g_printerr (_("Error parsing time format: %s\n"),
+                                      line);
+                        }
+                      else if (jws_time_value_total_seconds (rotate_time)
+                               <= 0)
+                        {
+                          g_printerr (_("Error, time must be greater than 0."
+                                        "\n"));
+                        }
+                      else
+                        {
+                          jws_info_set_rotate_time (info,
+                                                    rotate_time);
+                        }
+                      jws_time_value_free (rotate_time);
+                    }
+                  g_free (value);
                 }
-              g_strfreev (tokens);
+
+              g_regex_unref (regex);
+              g_match_info_free (match_info);
             }
           else if (g_str_has_prefix (line, "rotate-image"))
             {
@@ -390,7 +421,8 @@ print_jws_info (JwsInfo *info)
         {
           g_print (_("Rotate image\n"));
           
-          g_print (_("Seconds between rotation: %i\n"), priv->rotate_seconds);
+          g_print (_("Seconds between rotation: %i\n"),
+                   jws_time_value_total_seconds (priv->rotate_time));
 
           if (priv->randomize_order)
             g_print (_("Randomize order\n"));
@@ -487,6 +519,63 @@ jws_time_value_new_for_seconds (int seconds)
 }
 
 JwsTimeValue *
+jws_time_value_new_from_string (const char *string)
+{
+  GRegex *regex;
+  regex = g_regex_new ("^(\?:(\\d+)h)\?(\?:(\\d+)m)\?(\?:(\\d+)s\?)\?$",
+                       0,
+                       0,
+                       NULL);
+  g_assert (regex);
+  GMatchInfo *match_info = NULL;
+  gboolean matched;
+  matched = g_regex_match (regex, string, 0, &match_info);
+
+  if (!matched)
+    {
+      return NULL;
+    }
+
+  JwsTimeValue *time = jws_time_value_new_for_values (0, 0, 0);
+
+  gchar *value = NULL;
+  gboolean found_num = FALSE;
+
+  value = g_match_info_fetch (match_info, 1);
+  if (value && strlen (value) > 0)
+    {
+      time->hours = atoi (value);
+      found_num = TRUE;
+    }
+  g_free (value);
+
+  value = g_match_info_fetch (match_info, 2);
+  if (value && strlen (value) > 0)
+    {
+      time->minutes = atoi (value);
+      found_num = TRUE;
+    }
+  g_free (value);
+
+  value = g_match_info_fetch (match_info, 3);
+  if (value && strlen (value) > 0)
+    {
+      time->seconds = atoi (value);
+      found_num = TRUE;
+    }
+
+  g_regex_unref (regex);
+  g_match_info_free (match_info);
+
+  if (!found_num)
+    {
+      return NULL;
+    }
+
+  return time;
+}
+
+JwsTimeValue *
 jws_time_value_new_for_values (int hours, int minutes, int seconds)
 {
   JwsTimeValue *time = NULL;
@@ -507,4 +596,21 @@ jws_time_value_copy (JwsTimeValue *time)
   return jws_time_value_new_for_values (time->hours,
                                         time->minutes,
                                         time->seconds);
+}
+
+void
+jws_time_value_free (JwsTimeValue *value)
+{
+  g_free (value);
+}
+
+void
+jws_time_value_set (JwsTimeValue *time, int hours, int minutes, int seconds)
+{
+  if (!time)
+    return;
+
+  time->hours = hours;
+  time->minutes = minutes;
+  time->seconds = seconds;
 }

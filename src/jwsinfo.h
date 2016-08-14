@@ -50,11 +50,18 @@ jws_time_value_new_for_seconds (int seconds);
 JwsTimeValue *
 jws_time_value_new_for_values (int hours, int minutes, int seconds);
 
+/*Returns NULL upon failure.  Takes args of the form xxHyyMkkS*/
+JwsTimeValue *
+jws_time_value_new_from_string (const char *string);
+
 void
 jws_time_value_free (JwsTimeValue *time);
 
 JwsTimeValue *
 jws_time_value_copy (JwsTimeValue *time);
+
+void
+jws_time_value_set (JwsTimeValue *time, int hours, int minutes, int seconds);
 
 int
 jws_time_value_total_seconds (JwsTimeValue *time);
@@ -83,11 +90,13 @@ jws_info_get_rotate_image (JwsInfo *info);
 void
 jws_info_set_rotate_image (JwsInfo *info, gboolean rotate_image);
 
-guint
-jws_info_get_rotate_seconds (JwsInfo *info);
+/* Free with jws_time_value_free ().  */
+JwsTimeValue *
+jws_info_get_rotate_time (JwsInfo *info);
 
+/* Makes a copy, free the argument you pass.  */
 void
-jws_info_set_rotate_seconds (JwsInfo *info, guint rotate_seconds);
+jws_info_set_rotate_time (JwsInfo *info, JwsTimeValue *rotate_time);
 
 gboolean
 jws_info_get_randomize_order (JwsInfo *info);

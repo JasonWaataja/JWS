@@ -52,7 +52,8 @@ struct _JwsCommandLineOptions
   gboolean single_image;
   gboolean randomize_order;
   gboolean in_order;
-  gint time;
+  //gint time;
+  gchar *rotate_time;
 };
 
 JwsInfo *

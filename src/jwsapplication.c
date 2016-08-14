@@ -69,7 +69,7 @@ jws_application_init (JwsApplication *self)
   priv->cmd_options.single_image = FALSE;
   priv->cmd_options.randomize_order = FALSE;
   priv->cmd_options.in_order = FALSE;
-  priv->cmd_options.time = 0;
+  priv->cmd_options.rotate_time = NULL;
 
   priv->file_list = NULL;
 
@@ -209,9 +209,28 @@ handle_local_options (GApplication *app,
   if (as_cmd_options->in_order)
     jws_info_set_randomize_order (priv->current_info, FALSE);
 
-  if (as_cmd_options->time > 0)
-    jws_info_set_rotate_seconds (priv->current_info, as_cmd_options->time);
-    
+  if (as_cmd_options->rotate_time)
+    {
+      JwsTimeValue *rotate_time;
+      rotate_time = jws_time_value_new_from_string
+        (as_cmd_options->rotate_time);
+
+      if (!rotate_time)
+        {
+          g_printerr (_("Error, invalid time format: %s.\n"),
+                      as_cmd_options->rotate_time);
+        }
+      else if (jws_time_value_total_seconds (rotate_time) <= 0)
+        {
+          g_printerr (_("Error, must use a time value greater than zero.\n"));
+        }
+      else
+        {
+          jws_info_set_rotate_time (priv->current_info, rotate_time);
+        }
+
+      jws_time_value_free (rotate_time);
+    }
   return -1;
 }
 
@@ -392,8 +411,9 @@ jws_application_display_images (JwsApplication *app)
               char *path;
               path = iter->data;
               jws_set_wallpaper_from_file (path);
-              int rotate_seconds = (jws_info_get_rotate_seconds
-                (priv->current_info));
+              JwsTimeValue *rotate_time;
+              rotate_time = jws_info_get_rotate_time (priv->current_info);
+              int rotate_seconds = jws_time_value_total_seconds (rotate_time);
               gulong sleep_time = rotate_seconds * G_USEC_PER_SEC;
               g_usleep (sleep_time);
             }
