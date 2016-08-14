@@ -338,7 +338,8 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path)
 
               if (!found_match)
                 {
-                  g_printerr (_("Error, incorrect time format: %s.\n"), line);
+                  g_printerr (_("Error, incorrect time format: \"%s\".\n"),
+                              line);
                 }
               else
                 {
@@ -350,8 +351,9 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path)
                       rotate_time = jws_time_value_new_from_string (value);
                       if (!rotate_time)
                         {
-                          g_printerr (_("Error parsing time format: %s\n"),
-                                      line);
+                          g_printerr
+                            (_("Error parsing time format: \"%s\".\n"),
+                             line);
                         }
                       else if (jws_time_value_total_seconds (rotate_time)
                                <= 0)

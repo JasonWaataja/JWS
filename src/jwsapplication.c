@@ -217,7 +217,7 @@ handle_local_options (GApplication *app,
 
       if (!rotate_time)
         {
-          g_printerr (_("Error, invalid time format: %s.\n"),
+          g_printerr (_("Error, invalid time format: \"%s\".\n"),
                       as_cmd_options->rotate_time);
         }
       else if (jws_time_value_total_seconds (rotate_time) <= 0)
