@@ -324,7 +324,6 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
        iter = g_list_next (iter))
     {
       line = iter->data;
-      g_print ("line: %s\n", line);
 
       if (g_str_has_prefix (line, "files"))
         {
@@ -362,7 +361,6 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                   iter->data = NULL;
                 }
               g_list_free (line_list);
-              g_print ("returning\n");
               return FALSE;
             }
           gchar *value;
@@ -381,7 +379,6 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                   iter->data = NULL;
                 }
               g_list_free (line_list);
-              g_print ("returning\n");
               return FALSE;
             }
 
@@ -402,7 +399,6 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                   iter->data = NULL;
                 }
               g_list_free (line_list);
-              g_print ("returning\n");
               return FALSE;
             }
 
@@ -419,11 +415,9 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                   iter->data = NULL;
                 }
               g_list_free (line_list);
-              g_print ("returning\n");
               return FALSE;
             }
 
-          g_print ("setting rotate time\n");
           jws_info_set_rotate_time (info, rotate_time);
 
           jws_time_value_free (rotate_time);
@@ -440,11 +434,8 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
         {
           priv->randomize_order = FALSE;
         }
-      g_print ("End of loop\n");
     }
-  g_print ("ous of loop\n");
 
-  g_print ("has_files: %i\n", has_files);
   if (!has_files)
     {
       g_set_error (err,
