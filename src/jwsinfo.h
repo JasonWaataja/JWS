@@ -28,6 +28,18 @@ along with JWS.  If not, see <http://www.gnu.org/licenses/>.  */
 typedef struct _JwsInfo JwsInfo;
 typedef struct _JwsInfoClass JwsInfoClass;
 
+#define JWS_INFO_ERROR jws_info_error_quark ()
+
+GQuark
+jws_info_error_quark (void);
+
+enum JwsInfoError
+{
+  JWS_INFO_ERROR_FILE,
+  JWS_INFO_ERROR_FILE_FORMAT,
+  JWS_INFO_ERROR_NO_FILES
+};
+
 typedef struct _JwsTimeValue JwsTimeValue;
 
 struct _JwsTimeValue
@@ -81,7 +93,7 @@ JwsInfo *
 jws_info_new ();
 
 JwsInfo *
-jws_info_new_from_file (const gchar *path);
+jws_info_new_from_file (const gchar *path, GError **err);
 
 
 gboolean
@@ -117,7 +129,7 @@ void
 jws_info_remove_file (JwsInfo *info, const gchar *path);
 
 gboolean
-jws_info_set_from_file (JwsInfo *info, const gchar *path);
+jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err);
 
 void
 print_jws_info (JwsInfo *info);

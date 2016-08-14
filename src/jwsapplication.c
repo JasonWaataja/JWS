@@ -194,7 +194,16 @@ handle_local_options (GApplication *app,
    * returns NULL in which case it won't set anything.  */
   if (priv->config_file)
     {
-      jws_info_set_from_file (priv->current_info, priv->config_file);
+      GError *err = NULL;
+      gboolean status;
+      status = jws_info_set_from_file (priv->current_info, priv->config_file,
+                                       &err);
+      if (!status)
+        {
+          g_printerr ("Error reading file \"%s\": %s\n", priv->config_file,
+                      err->message);
+          g_error_free (err);
+        }
     }
 
   if (as_cmd_options->rotate_image)
