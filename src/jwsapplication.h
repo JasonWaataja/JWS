@@ -43,16 +43,17 @@ handle_local_options (GApplication *application,
                       GVariantDict *options,
                       gpointer      user_data);
 
-typedef struct _jws_command_line_options jws_command_line_options;
+typedef struct _JwsCommandLineOptions JwsCommandLineOptions;
 
-struct _jws_command_line_options
+struct _JwsCommandLineOptions
 {
   gchar *config_file;
   gboolean rotate_image;
   gboolean single_image;
   gboolean randomize_order;
   gboolean in_order;
-  gint time;
+  //gint time;
+  gchar *rotate_time;
 };
 
 JwsInfo *
@@ -61,12 +62,12 @@ jws_application_get_current_info (JwsApplication *app);
 void
 jws_application_set_current_info (JwsApplication *app, JwsInfo *info);
 
-jws_command_line_options *
+JwsCommandLineOptions *
 jws_application_get_command_line_options (JwsApplication *app);
 
 void
 jws_application_set_command_line_options (JwsApplication *app,
-                                          jws_command_line_options *options);
+                                          JwsCommandLineOptions *options);
 
 GList *
 jws_application_get_file_list (JwsApplication *app);
