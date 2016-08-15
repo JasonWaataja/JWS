@@ -1,6 +1,6 @@
 
 
-AC_INIT([JWS], [1.0.1], [jasonswaataja@gmail.com])
+AC_INIT([JWS], [1.0.2], [jasonswaataja@gmail.com])
 AM_INIT_AUTOMAKE([-Wall foreign])
 AM_SILENT_RULES([yes])
 
