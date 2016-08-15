@@ -1,7 +1,7 @@
 # Change Log
 This project adheres to Semantic Versioning
 
-## [Unreleased]
+## [1.0.2] - 2016-08-14
 ### Added
 - Now accepts time valued of the form \[XXh\]\[YYm\]\[ZZs\] in addition to the
   original format.
