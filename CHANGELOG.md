@@ -1,4 +1,4 @@
-#Change Log
+# Change Log
 This project adheres to Semantic Versioning
 
 ## [Unreleased]
@@ -11,6 +11,7 @@ This project adheres to Semantic Versioning
 
 ### Fixed
 - Fixed segfault when reading files with no image or directory files listed.
+- Added shebang to autogen.sh so that it's an actual script, now.
 
 ## [1.0.0] - 2016-08-12
 - Initial release.
