@@ -42,7 +42,7 @@ struct _JwsApplicationPrivate
 {
   gchar *config_file;
   JwsInfo *current_info;
-  jws_command_line_options cmd_options;
+  JwsCommandLineOptions cmd_options;
   GList *file_list;
 
   /* To get out of the main loop on the unix signal.  */
@@ -69,7 +69,7 @@ jws_application_init (JwsApplication *self)
   priv->cmd_options.single_image = FALSE;
   priv->cmd_options.randomize_order = FALSE;
   priv->cmd_options.in_order = FALSE;
-  priv->cmd_options.time = 0;
+  priv->cmd_options.rotate_time = NULL;
 
   priv->file_list = NULL;
 
@@ -178,8 +178,8 @@ handle_local_options (GApplication *app,
   JwsApplicationPrivate *priv;
   priv = jws_application_get_instance_private (JWS_APPLICATION (app));
 
-  jws_command_line_options *as_cmd_options;
-  as_cmd_options = (jws_command_line_options *) cmd_options;
+  JwsCommandLineOptions *as_cmd_options;
+  as_cmd_options = (JwsCommandLineOptions *) cmd_options;
 
   if (as_cmd_options->config_file)
     {
@@ -194,7 +194,16 @@ handle_local_options (GApplication *app,
    * returns NULL in which case it won't set anything.  */
   if (priv->config_file)
     {
-      jws_info_set_from_file (priv->current_info, priv->config_file);
+      GError *err = NULL;
+      gboolean status;
+      status = jws_info_set_from_file (priv->current_info, priv->config_file,
+                                       &err);
+      if (!status)
+        {
+          g_printerr ("Error reading file \"%s\": %s\n", priv->config_file,
+                      err->message);
+          g_error_free (err);
+        }
     }
 
   if (as_cmd_options->rotate_image)
@@ -209,9 +218,28 @@ handle_local_options (GApplication *app,
   if (as_cmd_options->in_order)
     jws_info_set_randomize_order (priv->current_info, FALSE);
 
-  if (as_cmd_options->time > 0)
-    jws_info_set_rotate_seconds (priv->current_info, as_cmd_options->time);
-    
+  if (as_cmd_options->rotate_time)
+    {
+      JwsTimeValue *rotate_time;
+      rotate_time = jws_time_value_new_from_string
+        (as_cmd_options->rotate_time);
+
+      if (!rotate_time)
+        {
+          g_printerr (_("Error, invalid time format: \"%s\".\n"),
+                      as_cmd_options->rotate_time);
+        }
+      else if (jws_time_value_total_seconds (rotate_time) <= 0)
+        {
+          g_printerr (_("Error, must use a time value greater than zero.\n"));
+        }
+      else
+        {
+          jws_info_set_rotate_time (priv->current_info, rotate_time);
+        }
+
+      jws_time_value_free (rotate_time);
+    }
   return -1;
 }
 
@@ -244,7 +272,7 @@ jws_application_set_current_info (JwsApplication *app, JwsInfo *info)
     }
 }
 
-jws_command_line_options *
+JwsCommandLineOptions *
 jws_application_get_command_line_options (JwsApplication *app)
 {
   if (app)
@@ -262,7 +290,7 @@ jws_application_get_command_line_options (JwsApplication *app)
 
 void
 jws_application_set_command_line_options (JwsApplication *app,
-                                          jws_command_line_options *options)
+                                          JwsCommandLineOptions *options)
 {
   if (app && options)
     {
@@ -392,8 +420,9 @@ jws_application_display_images (JwsApplication *app)
               char *path;
               path = iter->data;
               jws_set_wallpaper_from_file (path);
-              int rotate_seconds = (jws_info_get_rotate_seconds
-                (priv->current_info));
+              JwsTimeValue *rotate_time;
+              rotate_time = jws_info_get_rotate_time (priv->current_info);
+              int rotate_seconds = jws_time_value_total_seconds (rotate_time);
               gulong sleep_time = rotate_seconds * G_USEC_PER_SEC;
               g_usleep (sleep_time);
             }

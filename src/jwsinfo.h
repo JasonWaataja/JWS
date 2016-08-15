@@ -28,6 +28,64 @@ along with JWS.  If not, see <http://www.gnu.org/licenses/>.  */
 typedef struct _JwsInfo JwsInfo;
 typedef struct _JwsInfoClass JwsInfoClass;
 
+#define JWS_INFO_ERROR jws_info_error_quark ()
+
+GQuark
+jws_info_error_quark (void);
+
+enum JwsInfoError
+{
+  JWS_INFO_ERROR_FILE,
+  JWS_INFO_ERROR_FILE_FORMAT,
+  JWS_INFO_ERROR_NO_FILES
+};
+
+typedef struct _JwsTimeValue JwsTimeValue;
+
+struct _JwsTimeValue
+{
+  int hours;
+  int minutes;
+  int seconds;
+};
+
+#define JWS_SECONDS_PER_MINUTE 60
+#define JWS_MINUTES_PER_HOUR 60
+#define JWS_SECONDS_PER_HOUR (JWS_SECONDS_PER_MINUTE * JWS_MINUTES_PER_HOUR)
+
+JwsTimeValue *
+jws_time_value_new ();
+
+JwsTimeValue *
+jws_time_value_new_for_seconds (int seconds);
+
+JwsTimeValue *
+jws_time_value_new_for_values (int hours, int minutes, int seconds);
+
+/*Returns NULL upon failure.  Takes args of the form xxHyyMkkS*/
+JwsTimeValue *
+jws_time_value_new_from_string (const char *string);
+
+void
+jws_time_value_free (JwsTimeValue *time);
+
+JwsTimeValue *
+jws_time_value_copy (JwsTimeValue *time);
+
+void
+jws_time_value_set (JwsTimeValue *time, int hours, int minutes, int seconds);
+
+int
+jws_time_value_total_seconds (JwsTimeValue *time);
+
+/* False if either is null.  */
+gboolean
+jws_time_value_equal (JwsTimeValue *a, JwsTimeValue *b);
+
+/* Does nothing if the time value is less than or equal to zero.  */
+void
+jws_time_value_to_simplest_form (JwsTimeValue *time);
+
 GType
 jws_info_get_type ();
 
@@ -35,7 +93,7 @@ JwsInfo *
 jws_info_new ();
 
 JwsInfo *
-jws_info_new_from_file (const gchar *path);
+jws_info_new_from_file (const gchar *path, GError **err);
 
 
 gboolean
@@ -44,11 +102,13 @@ jws_info_get_rotate_image (JwsInfo *info);
 void
 jws_info_set_rotate_image (JwsInfo *info, gboolean rotate_image);
 
-guint
-jws_info_get_rotate_seconds (JwsInfo *info);
+/* Free with jws_time_value_free ().  */
+JwsTimeValue *
+jws_info_get_rotate_time (JwsInfo *info);
 
+/* Makes a copy, free the argument you pass.  */
 void
-jws_info_set_rotate_seconds (JwsInfo *info, guint rotate_seconds);
+jws_info_set_rotate_time (JwsInfo *info, JwsTimeValue *rotate_time);
 
 gboolean
 jws_info_get_randomize_order (JwsInfo *info);
@@ -69,7 +129,7 @@ void
 jws_info_remove_file (JwsInfo *info, const gchar *path);
 
 gboolean
-jws_info_set_from_file (JwsInfo *info, const gchar *path);
+jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err);
 
 void
 print_jws_info (JwsInfo *info);

@@ -68,22 +68,22 @@ static GOptionEntry option_entries[] =
       NULL, "Shuffle the images", NULL},
     {"in-order", 'o', 0, G_OPTION_ARG_NONE,
       NULL, "Display images in oredr", NULL},
-    {"time", 't', 0, G_OPTION_ARG_INT, NULL,
-      "Seconds between changing changing image", NULL},
+    {"time", 't', 0, G_OPTION_ARG_STRING, NULL,
+      "Time between changing changing image", NULL},
     {NULL}
 };
 
 void
 set_command_line_options (JwsApplication *app)
 {
-  jws_command_line_options *options;
+  JwsCommandLineOptions *options;
   options = jws_application_get_command_line_options (app);
   option_entries[0].arg_data = &(options->config_file);
   option_entries[1].arg_data = &(options->rotate_image);
   option_entries[2].arg_data = &(options->single_image);
   option_entries[3].arg_data = &(options->randomize_order);
   option_entries[4].arg_data = &(options->in_order);
-  option_entries[5].arg_data = &(options->time);
+  option_entries[5].arg_data = &(options->rotate_time);
   g_application_add_main_option_entries (G_APPLICATION (app), option_entries);
 }
 
