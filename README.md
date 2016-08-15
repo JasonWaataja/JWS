@@ -1,13 +1,17 @@
 # JWS
-A small project for setting up wallpapers on minimal window managers or any
-desktop environment that supports setting wallpapers with feh. There's a command
-line utility called jws with acts as the daemon for setting the wallpaper and is
-supposed to be started with the WM or DE with the command `jws` or `jws -c
-/path/to/config/file`. [JWS-Config](https://github.com/JasonWaataja/JWS-Config)
-is a graphical tool for creating the config file that is used by JWS. It is
-highly recommended that you check it out and use it to configure JWS. JWS uses
-feh as a backend to set wallpapers and its main benefit is ease of configuration
-and management (via JWS-Config).
+A wallpaper setter for minimalist window managers
+
+## Synopsis
+JWS is a small project for setting up wallpapers on minimalist window managers
+or any desktop environment that supports setting wallpapers with feh. There's a
+command line utility called jws with acts as the daemon for setting the
+wallpaper and is supposed to be started with the WM or DE with the command `jws`
+or `jws -c /path/to/config/file`.
+[JWS-Config](https://github.com/JasonWaataja/JWS-Config) is a graphical tool for
+creating the config file that is used by JWS. It is highly recommended that you
+check it out and use it to configure JWS. JWS uses feh as a backend to set
+wallpapers and its main benefit is ease of configuration and management (via
+JWS-Config).
 
 ## Installation
 JWS can be installed on Arch Linux from the AUR with the jws-git package. Try
@@ -69,9 +73,6 @@ in any combination that you want. Leaving out a unit is interpreted as seconds.
 For example, "time 3m20s" will rotate the image every three minutes and 20
 seconds and "time 120" will rotate the image every two minutes.
 
-The jws executable also accepts command line arguments that supersede the config
-file. Check the soon to exist man page for a list of available options.
-
 #### Files Section
 After a line with the text `files`, any lines with text on them are treated as
 files or directories to be added. Try to use absolute paths. An regular file
@@ -88,3 +89,7 @@ time 10s
 files
 /home/jason/Dropbox/Backgrounds
 ```
+
+#### Command Line Arguments
+The jws executable also accepts command line arguments that supersede the config
+file. Check the soon to exist man page for a list of available options.
