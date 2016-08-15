@@ -68,6 +68,16 @@ in any combination that you want. Leaving out a unit is interpreted as seconds.
 For example, "time 3m20s" will rotate the image every three minutes and 20
 seconds and "time 120" will rotate the image every two minutes.
 
+The jws executable also accepts command line arguments that supersede the config
+file. Check the soon to exist man page for a list of available options.
+
+#### Files Section
+After a line with the text `files`, any lines with text on them are treated as
+files or directories to be added. Try to use absolute paths. An regular file
+will be added to the list of images to display and a directory will be displayed
+recursively with the images inside of it.
+
+#### Example Configuration File
 My configuration file looks like this:
 ```
 rotate-image
@@ -77,12 +87,3 @@ time 10s
 files
 /home/jason/Dropbox/Backgrounds
 ```
-
-The jws executable also accepts command line arguments that supersede the config
-file. Check the soon to exist man page for a list of available options.
-
-#### Files section
-After a line with the text `files`, any lines with text on them are treated as
-files or directories to be added. Try to use absolute paths. An regular file
-will be added to the list of images to display and a directory will be displayed
-recursively with the images inside of it.
