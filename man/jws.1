@@ -1,0 +1,29 @@
+.TH jws 1 "15 August 2016" "1.0.2" "jws man page"
+.SH NAME
+jws \- A wallpaper setter for minimalist window managers
+.SH SYNOPSIS
+jws [options] [-c configfile] [files]
+.SH DESCRIPTION
+Uses feh to set a wallpaper and optionally change it at a regular interval.
+Reads config files such as ~/.jws and $XDG_CONFIG_HOME/jws. Can be used with a
+set of files and directories and options to customize your desktop's wallpaper
+rotation.
+.SH OPTIONS
+.IP "-c, --config-file"
+Specify file to load config from, default is ~/.jws
+.IP "-r, --rotate-image"
+Change the image
+.IP "-i, --single-image"
+Display one image only
+.IP "-s, --randomize-order"
+Shuffle the images
+.IP "-o, --in-order"
+Display images in order
+.IP "-t, --time"
+Time between changing image of the form [XXh][YYm][ZZs] or just a seconds value
+.SH SEE ALSO
+jws-config
+.SH BUGS
+No known bugs.
+.SH AUTHOR
+Jason Waataja <jasonswaataja@gmail.com>
