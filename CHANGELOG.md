@@ -1,6 +1,16 @@
 # Change Log
 This project adheres to Semantic Versioning
 
+## [Unreleased]
+### Changed
+- Greatly improve README file.
+
+### Added
+- Finally added a man page.
+
+### Fixed
+- Fix spelling errors in program help function.
+
 ## [1.0.2] - 2016-08-14
 ### Added
 - Now accepts time valued of the form \[XXh\]\[YYm\]\[ZZs\] in addition to the

@@ -67,9 +67,10 @@ static GOptionEntry option_entries[] =
     {"randomize-order", 's', 0, G_OPTION_ARG_NONE,
       NULL, "Shuffle the images", NULL},
     {"in-order", 'o', 0, G_OPTION_ARG_NONE,
-      NULL, "Display images in oredr", NULL},
+      NULL, "Display images in order", NULL},
     {"time", 't', 0, G_OPTION_ARG_STRING, NULL,
-      "Time between changing changing image", NULL},
+      "Time between changing image of the form [XXh][YYm][ZZs] or just a "
+        "seconds value", NULL},
     {NULL}
 };
 
