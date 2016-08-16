@@ -44,6 +44,16 @@ wallpaper to a directory in the top level and have it appear without additional
 configuration. If you want to only use some files from a subdirectory, then
 specify them as toplevel images.
 
+### Starting JWS
+JWS is mean to be started by a window manager or desktop environment on startup.
+Note that only some of these actually allow you to set the wallpaper with JWS as
+they have their own settings and configuration tools to do this. To start it
+with your desktop environment, you'll need to launch the jws executable.
+
+In i3, add `exec jws` to your config file.
+
+In Openbox, add `jws &` to your autostart file.
+
 ### Configuration
 The recommended way to configure JWS is through running JWS-Config. All that
 does is write to ~/.jws so writing the file yourself is completely fine.
@@ -92,4 +102,5 @@ files
 
 #### Command Line Arguments
 The jws executable also accepts command line arguments that supersede the config
-file. Check the soon to exist man page for a list of available options.
+file. Check the man page for a list of available options. They more or less line
+up with the config file options.
