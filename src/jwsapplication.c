@@ -531,11 +531,14 @@ jws_add_path_to_list_recursive (GList *list, const char *path)
                                                NULL,
                                                NULL));
           
+          GList *dirent_list = NULL;
+
           while (result && dirent_info)
             {
               gchar *dirent_path = g_file_get_path (dirent_file);
               new_list = (jws_add_path_to_list_recursive (new_list,
                                                           dirent_path));
+              dirent_list = g_list_append (dirent_list, dirent_path);
               result = (g_file_enumerator_iterate (en,
                                                    &dirent_info,
                                                    &dirent_file,
@@ -543,6 +546,19 @@ jws_add_path_to_list_recursive (GList *list, const char *path)
                                                    NULL));
               g_free (dirent_path);
             }
+
+          dirent_list = g_list_sort (dirent_list, (GCompareFunc) g_strcmp0);
+
+          for (GList *list_iter = dirent_list;
+               list_iter;
+               list_iter = g_list_next (list_iter))
+            {
+              new_list = jws_add_path_to_list_recursive (new_list,
+                                                         list_iter->data);
+            }
+          
+          g_list_free (dirent_list);
+
           g_object_unref (en);
         }
       else if (file_type == G_FILE_TYPE_REGULAR)

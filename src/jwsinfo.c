@@ -486,9 +486,6 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
     }
   g_list_free (line_list);
 
-  g_print ("About to return true\n");
-  g_print ("randomize_order: %i\n", priv->randomize_order);
-
   return TRUE;
 }
 

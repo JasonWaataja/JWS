@@ -2,7 +2,12 @@
 This project adheres to Semantic Versioning
 
 ## [Unreleased]
-- Update REAdME with some new information.
+### Changed
+- Update README with some new information.
+
+### Fixed
+- Now guaranteed to list all directories and subdirectories in alphabetical
+order.
 
 ## [1.1.0] - 2016-08-15
 ### Changed
