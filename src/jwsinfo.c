@@ -83,7 +83,7 @@ jws_info_init (JwsInfo *self)
   priv = jws_info_get_instance_private (self);
 
   priv->rotate_image = TRUE;
-  priv->rotate_time = jws_time_value_new_for_seconds (60);
+  priv->rotate_time = jws_time_value_new_for_values (0, 1, 0);
   priv->randomize_order = TRUE;
 
   priv->file_list = NULL;
@@ -274,6 +274,9 @@ gboolean
 jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
 {
   g_assert (info);
+
+  jws_info_set_defaults (info);
+
   JwsInfoPrivate *priv;
   priv = jws_info_get_instance_private (info);
 
@@ -426,7 +429,7 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
           g_regex_unref (regex);
           g_match_info_free (match_info);
         }
-      else if (g_str_has_prefix (line, "rotate-image"))
+      else if (g_str_has_prefix (line, "randomize-order"))
         {
           priv->randomize_order = TRUE;
         }
@@ -482,6 +485,9 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
       iter->data = NULL;
     }
   g_list_free (line_list);
+
+  g_print ("About to return true\n");
+  g_print ("randomize_order: %i\n", priv->randomize_order);
 
   return TRUE;
 }
@@ -696,4 +702,153 @@ GQuark
 jws_info_error_quark (void)
 {
   return g_quark_from_static_string ("jws-info-error-quark");
+}
+
+gboolean
+jws_info_write_to_file (JwsInfo *info, const gchar *path)
+{
+  JwsInfoPrivate *priv;
+  priv = jws_info_get_instance_private (info);
+  
+  GIOChannel *writer;
+  writer = g_io_channel_new_file (path, "w", NULL);
+
+  if (!writer)
+    return FALSE;
+
+  gboolean status;
+
+  if (priv->rotate_image)
+    {
+      status = jws_write_line (writer, "rotate-image");
+      if (!status)
+        {
+          g_io_channel_shutdown (writer, TRUE, NULL);
+          g_io_channel_unref (writer);
+          return FALSE;
+        }
+
+      if (priv->randomize_order)
+        {
+          status = jws_write_line (writer, "randomize-order");
+          if (!status)
+            {
+              g_io_channel_shutdown (writer, TRUE, NULL);
+              g_io_channel_unref (writer);
+              return FALSE;
+            }
+        }
+      else
+        {
+          status = jws_write_line (writer, "in-order");
+          if (!status)
+            {
+              g_io_channel_shutdown (writer, TRUE, NULL);
+              g_io_channel_unref (writer);
+              return FALSE;
+            }
+        }
+      size_t buf_size = 80;
+      char buf[buf_size];
+      int bytes_written;
+      JwsTimeValue *simplest_form;
+      simplest_form = jws_time_value_copy (priv->rotate_time);
+      jws_time_value_to_simplest_form (simplest_form);
+      bytes_written = snprintf (buf, 80, "%ih%im%is",
+                                simplest_form->hours,
+                                simplest_form->minutes,
+                                simplest_form->seconds);
+      jws_time_value_free (simplest_form);
+
+      if (bytes_written <= 0 || bytes_written >= buf_size)
+        {
+          g_io_channel_shutdown (writer, TRUE, NULL);
+          g_io_channel_unref (writer);
+          return FALSE;
+        }
+      gchar *time_line;
+      time_line = g_strconcat ("time ", buf, NULL);
+
+      status = jws_write_line (writer, time_line);
+      g_free (time_line);
+      if (!status)
+        {
+          g_io_channel_shutdown (writer, TRUE, NULL);
+          g_io_channel_unref (writer);
+          return FALSE;
+        }
+    }
+  else
+    {
+      status = jws_write_line (writer, "single-image");
+      if (!status)
+        {
+          g_io_channel_shutdown (writer, TRUE, NULL);
+          g_io_channel_unref (writer);
+          return FALSE;
+        }
+    }
+
+  status = jws_write_line (writer, "");
+  if (!status)
+    {
+      g_io_channel_shutdown (writer, TRUE, NULL);
+      g_io_channel_unref (writer);
+      return FALSE;
+    }
+  status = jws_write_line (writer, "files");
+  if (!status)
+    {
+      g_io_channel_shutdown (writer, TRUE, NULL);
+      g_io_channel_unref (writer);
+      return FALSE;
+    }
+  GList *iter;
+  for (iter = g_list_first (priv->file_list); iter; iter = g_list_next (iter))
+    {
+      status = jws_write_line (writer, iter->data);
+      if (!status)
+        {
+          g_io_channel_shutdown (writer, TRUE, NULL);
+          g_io_channel_unref (writer);
+          return FALSE;
+        }
+    }
+  g_io_channel_shutdown (writer, TRUE, NULL);
+  g_io_channel_unref (writer);
+  return TRUE;
+}
+
+gboolean
+jws_write_line (GIOChannel *channel, const gchar *message)
+{
+  gchar *new_message;
+  new_message = g_strconcat (message, "\n", NULL);
+
+  GIOStatus status;
+  gsize size;
+  status = g_io_channel_write_chars (channel,
+                                     new_message,
+                                     -1,
+                                     &size,
+                                     NULL);
+  g_free (new_message);
+  return (status == G_IO_STATUS_NORMAL);
+}
+
+void
+jws_info_set_defaults (JwsInfo *info)
+{
+  g_assert (info);
+
+  JwsInfoPrivate *priv;
+  priv = jws_info_get_instance_private (info);
+  
+  priv->rotate_image = TRUE;
+  priv->randomize_order = FALSE;
+  jws_time_value_free (priv->rotate_time);
+  priv->rotate_time = jws_time_value_new_for_values (0, 1, 0);
+
+  g_list_free_full (priv->file_list, (GDestroyNotify) g_free);
+  priv->file_list = NULL;
 }

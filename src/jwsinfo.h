@@ -134,4 +134,15 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err);
 void
 print_jws_info (JwsInfo *info);
 
-#endif
+gboolean
+jws_info_write_to_file (JwsInfo *info, const gchar *path);
+
+/* Writes a NULL terminates string to the given channel not including the null
+ * character and returns whether or not the operation was successful.  */
+gboolean
+jws_write_line (GIOChannel *channel, const gchar *message);
+
+void
+jws_info_set_defaults (JwsInfo *info);
+
+#endif /* JWSINFO_H */
