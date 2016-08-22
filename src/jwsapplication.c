@@ -536,15 +536,12 @@ jws_add_path_to_list_recursive (GList *list, const char *path)
           while (result && dirent_info)
             {
               gchar *dirent_path = g_file_get_path (dirent_file);
-              new_list = (jws_add_path_to_list_recursive (new_list,
-                                                          dirent_path));
               dirent_list = g_list_append (dirent_list, dirent_path);
               result = (g_file_enumerator_iterate (en,
                                                    &dirent_info,
                                                    &dirent_file,
                                                    NULL,
                                                    NULL));
-              g_free (dirent_path);
             }
 
           dirent_list = g_list_sort (dirent_list, (GCompareFunc) g_strcmp0);
@@ -557,7 +554,7 @@ jws_add_path_to_list_recursive (GList *list, const char *path)
                                                          list_iter->data);
             }
           
-          g_list_free (dirent_list);
+          g_list_free_full (dirent_list, (GDestroyNotify) g_free);
 
           g_object_unref (en);
         }
