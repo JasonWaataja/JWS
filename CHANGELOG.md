@@ -1,6 +1,9 @@
 # Change Log
 This project adheres to Semantic Versioning
 
+## [Unreleased]
+- Update REAdME with some new information.
+
 ## [1.1.0] - 2016-08-15
 ### Changed
 - Greatly improve README file.
