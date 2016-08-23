@@ -83,6 +83,14 @@ in any combination that you want. Leaving out a unit is interpreted as seconds.
 For example, "time 3m20s" will rotate the image every three minutes and 20
 seconds and "time 120" will rotate the image every two minutes.
 
+A line starting with `mode` will set the mode to display the wallpaper in. The
+options are `fill`, `center`, `max`, `scale`, and `tile`. Consult feh's
+documentation more more info. In short, `fill` zooms in on the image until there
+are no borders, `center` preserves the image's resolution and centers it on the
+screen, `max` zooms in on the image so that the whole thing fits, `scale`
+stretchs the image to fit the screen, and `tile` makes the image display in
+tiles across the screen.
+
 #### Files Section
 After a line with the text `files`, any lines with text on them are treated as
 files or directories to be added. Try to use absolute paths. An regular file
@@ -95,6 +103,7 @@ My configuration file looks like this:
 rotate-image
 randomize-order
 time 10s
+mode fill
 
 files
 /home/jason/Dropbox/Backgrounds
