@@ -71,6 +71,9 @@ static GOptionEntry option_entries[] =
     {"time", 't', 0, G_OPTION_ARG_STRING, NULL,
       "Time between changing image of the form [XXh][YYm][ZZs] or just a "
         "seconds value", NULL},
+	{"mode", 'm', 0, G_OPTION_ARG_STRING, NULL,
+	  "Mode for displaying image, \"fill\", \"center\", \"max\", \"scale\" and"
+		"\"tile\".", NULL},
     {NULL}
 };
 
@@ -85,6 +88,7 @@ set_command_line_options (JwsApplication *app)
   option_entries[3].arg_data = &(options->randomize_order);
   option_entries[4].arg_data = &(options->in_order);
   option_entries[5].arg_data = &(options->rotate_time);
+  option_entries[6].arg_data = &(options->mode);
   g_application_add_main_option_entries (G_APPLICATION (app), option_entries);
 }
 
