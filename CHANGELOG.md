@@ -5,6 +5,10 @@ This project adheres to Semantic Versioning
 ### Changed
 - Update README with some new information.
 
+### Added
+- Add a new feature called mode that lets you set the mode in the config file
+and command line to one of feh's wallpaper modes such as fill or center.
+
 ### Fixed
 - Now guaranteed to list all directories and subdirectories in alphabetical
 order.

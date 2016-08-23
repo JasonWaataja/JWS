@@ -72,8 +72,8 @@ static GOptionEntry option_entries[] =
       "Time between changing image of the form [XXh][YYm][ZZs] or just a "
         "seconds value", NULL},
 	{"mode", 'm', 0, G_OPTION_ARG_STRING, NULL,
-	  "Mode for displaying image, \"fill\", \"center\", \"max\", \"scale\" and"
-		"\"tile\".", NULL},
+	  "Mode for displaying image: \"fill\", \"center\", \"max\", \"scale\" and"
+		" \"tile\"", NULL},
     {NULL}
 };
 
