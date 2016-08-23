@@ -8,6 +8,8 @@ This project adheres to Semantic Versioning
 ### Added
 - Add a new feature called mode that lets you set the mode in the config file
 and command line to one of feh's wallpaper modes such as fill or center.
+- Add comments to the config file started by "#". Will make documentation of
+your file easier.
 
 ### Fixed
 - Now guaranteed to list all directories and subdirectories in alphabetical
