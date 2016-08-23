@@ -54,6 +54,7 @@ struct _JwsCommandLineOptions
   gboolean in_order;
   //gint time;
   gchar *rotate_time;
+  gchar *mode;
 };
 
 JwsInfo *

@@ -25,6 +25,12 @@ along with JWS.  If not, see <http://www.gnu.org/licenses/>.  */
 #include <stdlib.h>
 #include <string.h>
 
+const char JWS_INFO_MODE_FILL[] = "fill";
+const char JWS_INFO_MODE_CENTER[] = "center";
+const char JWS_INFO_MODE_MAX[] = "max";
+const char JWS_INFO_MODE_SCALE[] = "scale";
+const char JWS_INFO_MODE_TILE[] = "tile";
+
 struct _JwsInfo
 {
   GObject parent;
@@ -42,6 +48,7 @@ struct _JwsInfoPrivate
   gboolean rotate_image;
   JwsTimeValue *rotate_time;
   gboolean randomize_order;
+  JwsWallpaperMode mode;
 
   GList *file_list;
 };
@@ -85,6 +92,7 @@ jws_info_init (JwsInfo *self)
   priv->rotate_image = TRUE;
   priv->rotate_time = jws_time_value_new_for_values (0, 1, 0);
   priv->randomize_order = TRUE;
+  priv->mode = JWS_DEFAULT_WALLPAPER_MODE;
 
   priv->file_list = NULL;
 }
@@ -359,11 +367,7 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                              "\"%s\"."), line);
               g_regex_unref (regex);
               g_match_info_free (match_info);
-              for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-                {
-                  iter->data = NULL;
-                }
-              g_list_free (line_list);
+              g_list_free_full (line_list, (GDestroyNotify) g_free);
               return FALSE;
             }
           gchar *value;
@@ -377,11 +381,9 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                            _("Failed to find valid argument to time."));
               g_regex_unref (regex);
               g_match_info_free (match_info);
-              for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-                {
-                  iter->data = NULL;
-                }
-              g_list_free (line_list);
+              g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  /* If it was NULL but had a length of zero.  */
+			  g_free (value);
               return FALSE;
             }
 
@@ -397,11 +399,8 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                            value);
               g_regex_unref (regex);
               g_match_info_free (match_info);
-              for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-                {
-                  iter->data = NULL;
-                }
-              g_list_free (line_list);
+              g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  g_free (value);
               return FALSE;
             }
 
@@ -413,11 +412,8 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                            _("Time must be greater than 0."));
               g_regex_unref (regex);
               g_match_info_free (match_info);
-              for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-                {
-                  iter->data = NULL;
-                }
-              g_list_free (line_list);
+              g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  g_free (value);
               return FALSE;
             }
 
@@ -437,6 +433,62 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
         {
           priv->randomize_order = FALSE;
         }
+	  else if (g_str_has_prefix (line, "mode"))
+		{
+		  GRegex *reg;
+		  reg = g_regex_new ("^mode\\s+(\\S+)$", 0, 0, NULL);
+
+		  g_assert (reg);
+
+		  GMatchInfo *match_info = NULL;
+		  gboolean found_match;
+
+		  found_match = g_regex_match (reg, line, 0, &match_info);
+
+		  if (!found_match)
+			{
+			  g_set_error (err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE_FORMAT,
+						   _("Invalid mode format"));
+			  g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  g_regex_unref (reg);
+			  g_match_info_free (match_info);
+			  return FALSE;
+			}
+
+		  gchar *value;
+		  value = g_match_info_fetch (match_info, 1);
+
+		  if (!value || strlen (value) == 0)
+			{
+			  g_set_error (err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE_FORMAT,
+						   _("Couldn't find argument for mode."));
+			  g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  g_regex_unref (reg);
+			  g_match_info_free (match_info);
+			  g_free (value);
+			  return FALSE;
+			}
+
+		  gboolean is_mode;
+		  JwsWallpaperMode mode;
+		  is_mode = jws_wallpaper_mode_from_info_string (value, &mode);
+
+		  if (!is_mode)
+			{
+			  g_set_error (err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE_FORMAT,
+						   _("Unrecognized mode \"%s\"."), value);
+			  g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  g_regex_unref (reg);
+			  g_match_info_free (match_info);
+			  g_free (value);
+			  return FALSE;
+			}
+
+		  jws_info_set_mode (info, mode);
+		  g_regex_unref (reg);
+		  g_match_info_free (match_info);
+		  g_free (value);
+		}
     }
 
   if (!has_files)
@@ -445,11 +497,7 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                    JWS_INFO_ERROR,
                    JWS_INFO_ERROR_NO_FILES,
                    _("No files found."));
-      for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-        {
-          iter->data = NULL;
-        }
-      g_list_free (line_list);
+      g_list_free_full (line_list, (GDestroyNotify) g_free);
       return FALSE;
     }
 
@@ -472,19 +520,11 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                    JWS_INFO_ERROR,
                    JWS_INFO_ERROR_NO_FILES,
                    _("No files found."));
-      for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-        {
-          iter->data = NULL;
-        }
-      g_list_free (line_list);
+      g_list_free_full (line_list, (GDestroyNotify) g_free);
       return FALSE;
     }
 
-  for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-    {
-      iter->data = NULL;
-    }
-  g_list_free (line_list);
+  g_list_free_full (line_list, (GDestroyNotify) g_free);
 
   return TRUE;
 }
@@ -848,4 +888,63 @@ jws_info_set_defaults (JwsInfo *info)
 
   g_list_free_full (priv->file_list, (GDestroyNotify) g_free);
   priv->file_list = NULL;
+
+  priv->mode = JWS_DEFAULT_WALLPAPER_MODE;
+}
+
+JwsWallpaperMode
+jws_info_get_mode (JwsInfo *info)
+{
+  g_assert (info);
+
+  JwsInfoPrivate *priv;
+  priv = jws_info_get_instance_private (info);
+  
+  return priv->mode;
+}
+
+void
+jws_info_set_mode (JwsInfo *info, JwsWallpaperMode mode)
+{
+  g_assert (info);
+
+  JwsInfoPrivate *priv;
+  priv = jws_info_get_instance_private (info);
+  
+  priv->mode = mode;
+}
+
+gboolean
+jws_wallpaper_mode_from_info_string (const gchar *mode_string,
+									 JwsWallpaperMode *mode)
+{
+  g_assert (mode);
+  if (g_strcmp0 (mode_string, JWS_INFO_MODE_FILL) == 0)
+	{
+	  *mode = JWS_WALLPAPER_MODE_FILL;
+	  return TRUE;
+	}
+  if (g_strcmp0 (mode_string, JWS_INFO_MODE_CENTER) == 0)
+	{
+	  *mode = JWS_WALLPAPER_MODE_CENTER;
+	  return TRUE;
+	}
+  if (g_strcmp0 (mode_string, JWS_INFO_MODE_MAX) == 0)
+	{
+	  *mode = JWS_WALLPAPER_MODE_MAX;
+	  return TRUE;
+	}
+  if (g_strcmp0 (mode_string, JWS_INFO_MODE_SCALE) == 0)
+	{
+	  *mode = JWS_WALLPAPER_MODE_SCALE;
+	  return TRUE;
+	}
+  if (g_strcmp0 (mode_string, JWS_INFO_MODE_TILE) == 0)
+	{
+	  *mode = JWS_WALLPAPER_MODE_TILE;
+	  return TRUE;
+	}
+
+  *mode = JWS_DEFAULT_WALLPAPER_MODE;
+  return FALSE;
 }

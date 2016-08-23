@@ -70,6 +70,7 @@ jws_application_init (JwsApplication *self)
   priv->cmd_options.randomize_order = FALSE;
   priv->cmd_options.in_order = FALSE;
   priv->cmd_options.rotate_time = NULL;
+  priv->cmd_options.mode = NULL;
 
   priv->file_list = NULL;
 
@@ -240,6 +241,25 @@ handle_local_options (GApplication *app,
 
       jws_time_value_free (rotate_time);
     }
+
+  if (as_cmd_options->mode)
+	{
+
+	  gboolean is_mode;
+	  JwsWallpaperMode mode;
+	  is_mode = jws_wallpaper_mode_from_info_string (as_cmd_options->mode, &mode);
+
+	  if (is_mode)
+		{
+		  jws_info_set_mode (priv->current_info, mode);
+		}
+	  else
+		{
+		  g_printerr (_("Error, unknown mode \"%s\".\n"),
+					  as_cmd_options->mode);
+		}
+	}
+
   return -1;
 }
 
@@ -419,7 +439,8 @@ jws_application_display_images (JwsApplication *app)
             {
               char *path;
               path = iter->data;
-              jws_set_wallpaper_from_file (path);
+              jws_set_wallpaper_from_file
+				(path, jws_info_get_mode (priv->current_info));
               JwsTimeValue *rotate_time;
               rotate_time = jws_info_get_rotate_time (priv->current_info);
               int rotate_seconds = jws_time_value_total_seconds (rotate_time);
@@ -433,7 +454,8 @@ jws_application_display_images (JwsApplication *app)
       char *path;
       path = g_list_first (priv->file_list)->data;
 
-      jws_set_wallpaper_from_file (path);
+	  jws_set_wallpaper_from_file
+		(path, jws_info_get_mode (priv->current_info));
     }
 }
 

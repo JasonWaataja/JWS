@@ -22,33 +22,51 @@ along with JWS.  If not, see <http://www.gnu.org/licenses/>.  */
 #include <stdlib.h>
 #include <string.h>
 
-int
-jws_set_wallpaper_from_file (const char *path)
+gchar *
+jws_feh_string_for_mode (JwsWallpaperMode mode)
 {
-  char cmd_prefix[] = "feh --bg-fill \"";
-  char cmd_suffix[] = "\"";
+  gchar *mode_str = NULL;
 
-  int str_len = (strlen (cmd_prefix)
-                 + strlen (path)
-                 + strlen (cmd_suffix));
+  switch (mode)
+	{
+	case JWS_WALLPAPER_MODE_FILL:
+	  mode_str = g_strdup ("--bg-fill");
+	  break;
+	case JWS_WALLPAPER_MODE_CENTER:
+	  mode_str = g_strdup ("--bg-center");
+	  break;
+	case JWS_WALLPAPER_MODE_MAX:
+	  mode_str = g_strdup ("--bg-max");
+	  break;
+	case JWS_WALLPAPER_MODE_SCALE:
+	  mode_str = g_strdup ("--bg-scale");
+	  break;
+	case JWS_WALLPAPER_MODE_TILE:
+	  mode_str = g_strdup ("--bg-tile");
+	  break;
+	default:
+	  /* This could go into an infinite loop but I sure hope not.  */
+	  mode_str = jws_feh_string_for_mode (JWS_DEFAULT_WALLPAPER_MODE);
+	  break;
+	}
 
-  char *cmd_str;
-  cmd_str = (char *) malloc (sizeof (char) * (str_len + 1));
-  strcpy (cmd_str, cmd_prefix);
-  strcat (cmd_str, path);
-  strcat (cmd_str, cmd_suffix);
+  return mode_str;
+}
+
+int
+jws_set_wallpaper_from_file (const char *path, JwsWallpaperMode mode)
+{
+  gchar *mode_str = jws_feh_string_for_mode (mode);
+
+  g_assert (mode_str);
+
+  gchar *set_cmd = g_strconcat ("feh ", mode_str, " \"", path, "\"", NULL);
 
   int status;
-  status = system (cmd_str);
+  status = system (set_cmd);
 
-  free (cmd_str);
+  g_free (mode_str);
+  g_free (set_cmd);
 
-  if (status == 0)
-    {
-      return 1;
-    }
-  else
-    {
-      return 0;
-    }
+  return (status == 0);
 }
