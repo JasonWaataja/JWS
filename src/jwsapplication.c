@@ -439,7 +439,8 @@ jws_application_display_images (JwsApplication *app)
             {
               char *path;
               path = iter->data;
-              jws_set_wallpaper_from_file (path, JWS_WALLPAPER_MODE_FILL);
+              jws_set_wallpaper_from_file
+				(path, jws_info_get_mode (priv->current_info));
               JwsTimeValue *rotate_time;
               rotate_time = jws_info_get_rotate_time (priv->current_info);
               int rotate_seconds = jws_time_value_total_seconds (rotate_time);
@@ -453,7 +454,8 @@ jws_application_display_images (JwsApplication *app)
       char *path;
       path = g_list_first (priv->file_list)->data;
 
-      jws_set_wallpaper_from_file (path, JWS_WALLPAPER_MODE_FILL);
+	  jws_set_wallpaper_from_file
+		(path, jws_info_get_mode (priv->current_info));
     }
 }
 

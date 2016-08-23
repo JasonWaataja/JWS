@@ -443,7 +443,7 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
 		  GMatchInfo *match_info = NULL;
 		  gboolean found_match;
 
-		  found_match = g_regex_match_all (reg, line, 0, &match_info);
+		  found_match = g_regex_match (reg, line, 0, &match_info);
 
 		  if (!found_match)
 			{
@@ -481,6 +481,7 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
 			  g_regex_unref (reg);
 			  g_match_info_free (match_info);
 			  g_free (value);
+			  return FALSE;
 			}
 
 		  jws_info_set_mode (info, mode);
