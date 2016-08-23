@@ -313,7 +313,10 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
       if (line && terminator_pos)
         line[terminator_pos] = '\0';
 
-      line_list = g_list_append (line_list, g_strdup (line));
+	  if (!g_str_has_prefix (line, "#"))
+		{
+		  line_list = g_list_append (line_list, g_strdup (line));
+		}
       g_free (line);
       line = NULL;
 
