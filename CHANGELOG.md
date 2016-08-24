@@ -1,7 +1,7 @@
 # Change Log
 This project adheres to Semantic Versioning
 
-## [Unreleased]
+## [1.2.0] - 2016-08-23
 ### Changed
 - Update README with some new information.
 
