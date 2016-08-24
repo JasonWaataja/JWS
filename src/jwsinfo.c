@@ -25,6 +25,12 @@ along with JWS.  If not, see <http://www.gnu.org/licenses/>.  */
 #include <stdlib.h>
 #include <string.h>
 
+const char JWS_INFO_MODE_FILL[] = "fill";
+const char JWS_INFO_MODE_CENTER[] = "center";
+const char JWS_INFO_MODE_MAX[] = "max";
+const char JWS_INFO_MODE_SCALE[] = "scale";
+const char JWS_INFO_MODE_TILE[] = "tile";
+
 struct _JwsInfo
 {
   GObject parent;
@@ -42,6 +48,7 @@ struct _JwsInfoPrivate
   gboolean rotate_image;
   JwsTimeValue *rotate_time;
   gboolean randomize_order;
+  JwsWallpaperMode mode;
 
   GList *file_list;
 };
@@ -83,8 +90,9 @@ jws_info_init (JwsInfo *self)
   priv = jws_info_get_instance_private (self);
 
   priv->rotate_image = TRUE;
-  priv->rotate_time = jws_time_value_new_for_seconds (60);
+  priv->rotate_time = jws_time_value_new_for_values (0, 1, 0);
   priv->randomize_order = TRUE;
+  priv->mode = JWS_DEFAULT_WALLPAPER_MODE;
 
   priv->file_list = NULL;
 }
@@ -274,6 +282,9 @@ gboolean
 jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
 {
   g_assert (info);
+
+  jws_info_set_defaults (info);
+
   JwsInfoPrivate *priv;
   priv = jws_info_get_instance_private (info);
 
@@ -302,7 +313,10 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
       if (line && terminator_pos)
         line[terminator_pos] = '\0';
 
-      line_list = g_list_append (line_list, g_strdup (line));
+	  if (!g_str_has_prefix (line, "#"))
+		{
+		  line_list = g_list_append (line_list, g_strdup (line));
+		}
       g_free (line);
       line = NULL;
 
@@ -356,11 +370,7 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                              "\"%s\"."), line);
               g_regex_unref (regex);
               g_match_info_free (match_info);
-              for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-                {
-                  iter->data = NULL;
-                }
-              g_list_free (line_list);
+              g_list_free_full (line_list, (GDestroyNotify) g_free);
               return FALSE;
             }
           gchar *value;
@@ -374,11 +384,9 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                            _("Failed to find valid argument to time."));
               g_regex_unref (regex);
               g_match_info_free (match_info);
-              for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-                {
-                  iter->data = NULL;
-                }
-              g_list_free (line_list);
+              g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  /* If it was NULL but had a length of zero.  */
+			  g_free (value);
               return FALSE;
             }
 
@@ -394,11 +402,8 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                            value);
               g_regex_unref (regex);
               g_match_info_free (match_info);
-              for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-                {
-                  iter->data = NULL;
-                }
-              g_list_free (line_list);
+              g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  g_free (value);
               return FALSE;
             }
 
@@ -410,11 +415,8 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                            _("Time must be greater than 0."));
               g_regex_unref (regex);
               g_match_info_free (match_info);
-              for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-                {
-                  iter->data = NULL;
-                }
-              g_list_free (line_list);
+              g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  g_free (value);
               return FALSE;
             }
 
@@ -426,7 +428,7 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
           g_regex_unref (regex);
           g_match_info_free (match_info);
         }
-      else if (g_str_has_prefix (line, "rotate-image"))
+      else if (g_str_has_prefix (line, "randomize-order"))
         {
           priv->randomize_order = TRUE;
         }
@@ -434,6 +436,62 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
         {
           priv->randomize_order = FALSE;
         }
+	  else if (g_str_has_prefix (line, "mode"))
+		{
+		  GRegex *reg;
+		  reg = g_regex_new ("^mode\\s+(\\S+)$", 0, 0, NULL);
+
+		  g_assert (reg);
+
+		  GMatchInfo *match_info = NULL;
+		  gboolean found_match;
+
+		  found_match = g_regex_match (reg, line, 0, &match_info);
+
+		  if (!found_match)
+			{
+			  g_set_error (err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE_FORMAT,
+						   _("Invalid mode format"));
+			  g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  g_regex_unref (reg);
+			  g_match_info_free (match_info);
+			  return FALSE;
+			}
+
+		  gchar *value;
+		  value = g_match_info_fetch (match_info, 1);
+
+		  if (!value || strlen (value) == 0)
+			{
+			  g_set_error (err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE_FORMAT,
+						   _("Couldn't find argument for mode."));
+			  g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  g_regex_unref (reg);
+			  g_match_info_free (match_info);
+			  g_free (value);
+			  return FALSE;
+			}
+
+		  gboolean is_mode;
+		  JwsWallpaperMode mode;
+		  is_mode = jws_wallpaper_mode_from_info_string (value, &mode);
+
+		  if (!is_mode)
+			{
+			  g_set_error (err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE_FORMAT,
+						   _("Unrecognized mode \"%s\"."), value);
+			  g_list_free_full (line_list, (GDestroyNotify) g_free);
+			  g_regex_unref (reg);
+			  g_match_info_free (match_info);
+			  g_free (value);
+			  return FALSE;
+			}
+
+		  jws_info_set_mode (info, mode);
+		  g_regex_unref (reg);
+		  g_match_info_free (match_info);
+		  g_free (value);
+		}
     }
 
   if (!has_files)
@@ -442,11 +500,7 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                    JWS_INFO_ERROR,
                    JWS_INFO_ERROR_NO_FILES,
                    _("No files found."));
-      for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-        {
-          iter->data = NULL;
-        }
-      g_list_free (line_list);
+      g_list_free_full (line_list, (GDestroyNotify) g_free);
       return FALSE;
     }
 
@@ -469,19 +523,11 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err)
                    JWS_INFO_ERROR,
                    JWS_INFO_ERROR_NO_FILES,
                    _("No files found."));
-      for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-        {
-          iter->data = NULL;
-        }
-      g_list_free (line_list);
+      g_list_free_full (line_list, (GDestroyNotify) g_free);
       return FALSE;
     }
 
-  for (iter = line_list; iter != NULL; iter = g_list_next (iter))
-    {
-      iter->data = NULL;
-    }
-  g_list_free (line_list);
+  g_list_free_full (line_list, (GDestroyNotify) g_free);
 
   return TRUE;
 }
@@ -696,4 +742,212 @@ GQuark
 jws_info_error_quark (void)
 {
   return g_quark_from_static_string ("jws-info-error-quark");
+}
+
+gboolean
+jws_info_write_to_file (JwsInfo *info, const gchar *path)
+{
+  JwsInfoPrivate *priv;
+  priv = jws_info_get_instance_private (info);
+  
+  GIOChannel *writer;
+  writer = g_io_channel_new_file (path, "w", NULL);
+
+  if (!writer)
+    return FALSE;
+
+  gboolean status;
+
+  if (priv->rotate_image)
+    {
+      status = jws_write_line (writer, "rotate-image");
+      if (!status)
+        {
+          g_io_channel_shutdown (writer, TRUE, NULL);
+          g_io_channel_unref (writer);
+          return FALSE;
+        }
+
+      if (priv->randomize_order)
+        {
+          status = jws_write_line (writer, "randomize-order");
+          if (!status)
+            {
+              g_io_channel_shutdown (writer, TRUE, NULL);
+              g_io_channel_unref (writer);
+              return FALSE;
+            }
+        }
+      else
+        {
+          status = jws_write_line (writer, "in-order");
+          if (!status)
+            {
+              g_io_channel_shutdown (writer, TRUE, NULL);
+              g_io_channel_unref (writer);
+              return FALSE;
+            }
+        }
+      size_t buf_size = 80;
+      char buf[buf_size];
+      int bytes_written;
+      JwsTimeValue *simplest_form;
+      simplest_form = jws_time_value_copy (priv->rotate_time);
+      jws_time_value_to_simplest_form (simplest_form);
+      bytes_written = snprintf (buf, 80, "%ih%im%is",
+                                simplest_form->hours,
+                                simplest_form->minutes,
+                                simplest_form->seconds);
+      jws_time_value_free (simplest_form);
+
+      if (bytes_written <= 0 || bytes_written >= buf_size)
+        {
+          g_io_channel_shutdown (writer, TRUE, NULL);
+          g_io_channel_unref (writer);
+          return FALSE;
+        }
+      gchar *time_line;
+      time_line = g_strconcat ("time ", buf, NULL);
+
+      status = jws_write_line (writer, time_line);
+      g_free (time_line);
+      if (!status)
+        {
+          g_io_channel_shutdown (writer, TRUE, NULL);
+          g_io_channel_unref (writer);
+          return FALSE;
+        }
+    }
+  else
+    {
+      status = jws_write_line (writer, "single-image");
+      if (!status)
+        {
+          g_io_channel_shutdown (writer, TRUE, NULL);
+          g_io_channel_unref (writer);
+          return FALSE;
+        }
+    }
+
+  status = jws_write_line (writer, "");
+  if (!status)
+    {
+      g_io_channel_shutdown (writer, TRUE, NULL);
+      g_io_channel_unref (writer);
+      return FALSE;
+    }
+  status = jws_write_line (writer, "files");
+  if (!status)
+    {
+      g_io_channel_shutdown (writer, TRUE, NULL);
+      g_io_channel_unref (writer);
+      return FALSE;
+    }
+  GList *iter;
+  for (iter = g_list_first (priv->file_list); iter; iter = g_list_next (iter))
+    {
+      status = jws_write_line (writer, iter->data);
+      if (!status)
+        {
+          g_io_channel_shutdown (writer, TRUE, NULL);
+          g_io_channel_unref (writer);
+          return FALSE;
+        }
+    }
+  g_io_channel_shutdown (writer, TRUE, NULL);
+  g_io_channel_unref (writer);
+  return TRUE;
+}
+
+gboolean
+jws_write_line (GIOChannel *channel, const gchar *message)
+{
+  gchar *new_message;
+  new_message = g_strconcat (message, "\n", NULL);
+
+  GIOStatus status;
+  gsize size;
+  status = g_io_channel_write_chars (channel,
+                                     new_message,
+                                     -1,
+                                     &size,
+                                     NULL);
+  g_free (new_message);
+  return (status == G_IO_STATUS_NORMAL);
+}
+
+void
+jws_info_set_defaults (JwsInfo *info)
+{
+  g_assert (info);
+
+  JwsInfoPrivate *priv;
+  priv = jws_info_get_instance_private (info);
+  
+  priv->rotate_image = TRUE;
+  priv->randomize_order = FALSE;
+  jws_time_value_free (priv->rotate_time);
+  priv->rotate_time = jws_time_value_new_for_values (0, 1, 0);
+
+  g_list_free_full (priv->file_list, (GDestroyNotify) g_free);
+  priv->file_list = NULL;
+
+  priv->mode = JWS_DEFAULT_WALLPAPER_MODE;
+}
+
+JwsWallpaperMode
+jws_info_get_mode (JwsInfo *info)
+{
+  g_assert (info);
+
+  JwsInfoPrivate *priv;
+  priv = jws_info_get_instance_private (info);
+  
+  return priv->mode;
+}
+
+void
+jws_info_set_mode (JwsInfo *info, JwsWallpaperMode mode)
+{
+  g_assert (info);
+
+  JwsInfoPrivate *priv;
+  priv = jws_info_get_instance_private (info);
+  
+  priv->mode = mode;
+}
+
+gboolean
+jws_wallpaper_mode_from_info_string (const gchar *mode_string,
+									 JwsWallpaperMode *mode)
+{
+  g_assert (mode);
+  if (g_strcmp0 (mode_string, JWS_INFO_MODE_FILL) == 0)
+	{
+	  *mode = JWS_WALLPAPER_MODE_FILL;
+	  return TRUE;
+	}
+  if (g_strcmp0 (mode_string, JWS_INFO_MODE_CENTER) == 0)
+	{
+	  *mode = JWS_WALLPAPER_MODE_CENTER;
+	  return TRUE;
+	}
+  if (g_strcmp0 (mode_string, JWS_INFO_MODE_MAX) == 0)
+	{
+	  *mode = JWS_WALLPAPER_MODE_MAX;
+	  return TRUE;
+	}
+  if (g_strcmp0 (mode_string, JWS_INFO_MODE_SCALE) == 0)
+	{
+	  *mode = JWS_WALLPAPER_MODE_SCALE;
+	  return TRUE;
+	}
+  if (g_strcmp0 (mode_string, JWS_INFO_MODE_TILE) == 0)
+	{
+	  *mode = JWS_WALLPAPER_MODE_TILE;
+	  return TRUE;
+	}
+
+  *mode = JWS_DEFAULT_WALLPAPER_MODE;
+  return FALSE;
 }

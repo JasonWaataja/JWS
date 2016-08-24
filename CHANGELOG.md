@@ -1,6 +1,20 @@
 # Change Log
 This project adheres to Semantic Versioning
 
+## [1.2.0] - 2016-08-23
+### Changed
+- Update README with some new information.
+
+### Added
+- Add a new feature called mode that lets you set the mode in the config file
+and command line to one of feh's wallpaper modes such as fill or center.
+- Add comments to the config file started by "#". Will make documentation of
+your file easier.
+
+### Fixed
+- Now guaranteed to list all directories and subdirectories in alphabetical
+order.
+
 ## [1.1.0] - 2016-08-15
 ### Changed
 - Greatly improve README file.

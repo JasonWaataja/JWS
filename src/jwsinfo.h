@@ -21,6 +21,7 @@ along with JWS.  If not, see <http://www.gnu.org/licenses/>.  */
 #define JWSINFO_H
 
 #include <glib-object.h>
+#include "jwssetter.h"
 
 #define JWS_TYPE_INFO (jws_info_get_type ())
 #define JWS_INFO(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), JWS_TYPE_INFO, JwsInfo))
@@ -86,6 +87,16 @@ jws_time_value_equal (JwsTimeValue *a, JwsTimeValue *b);
 void
 jws_time_value_to_simplest_form (JwsTimeValue *time);
 
+extern const char JWS_INFO_MODE_FILL[];
+extern const char JWS_INFO_MODE_CENTER[];
+extern const char JWS_INFO_MODE_MAX[];
+extern const char JWS_INFO_MODE_SCALE[];
+extern const char JWS_INFO_MODE_TILE[];
+
+gboolean
+jws_wallpaper_mode_from_info_string (const gchar *mode_string,
+									 JwsWallpaperMode *mode);
+
 GType
 jws_info_get_type ();
 
@@ -122,6 +133,12 @@ jws_info_get_file_list (JwsInfo *info);
 void
 jws_info_set_file_list (JwsInfo *info, GList *file_list);
 
+JwsWallpaperMode
+jws_info_get_mode (JwsInfo *info);
+
+void
+jws_info_set_mode (JwsInfo *info, JwsWallpaperMode mode);
+
 void
 jws_info_add_file (JwsInfo *info, const gchar *path);
 
@@ -134,4 +151,15 @@ jws_info_set_from_file (JwsInfo *info, const gchar *path, GError **err);
 void
 print_jws_info (JwsInfo *info);
 
-#endif
+gboolean
+jws_info_write_to_file (JwsInfo *info, const gchar *path);
+
+/* Writes a NULL terminates string to the given channel not including the null
+ * character and returns whether or not the operation was successful.  */
+gboolean
+jws_write_line (GIOChannel *channel, const gchar *message);
+
+void
+jws_info_set_defaults (JwsInfo *info);
+
+#endif /* JWSINFO_H */

@@ -44,6 +44,16 @@ wallpaper to a directory in the top level and have it appear without additional
 configuration. If you want to only use some files from a subdirectory, then
 specify them as toplevel images.
 
+### Starting JWS
+JWS is mean to be started by a window manager or desktop environment on startup.
+Note that only some of these actually allow you to set the wallpaper with JWS as
+they have their own settings and configuration tools to do this. To start it
+with your desktop environment, you'll need to launch the jws executable.
+
+In i3, add `exec jws` to your config file.
+
+In Openbox, add `jws &` to your autostart file.
+
 ### Configuration
 The recommended way to configure JWS is through running JWS-Config. All that
 does is write to ~/.jws so writing the file yourself is completely fine.
@@ -73,6 +83,14 @@ in any combination that you want. Leaving out a unit is interpreted as seconds.
 For example, "time 3m20s" will rotate the image every three minutes and 20
 seconds and "time 120" will rotate the image every two minutes.
 
+A line starting with `mode` will set the mode to display the wallpaper in. The
+options are `fill`, `center`, `max`, `scale`, and `tile`. Consult feh's
+documentation more more info. In short, `fill` zooms in on the image until there
+are no borders, `center` preserves the image's resolution and centers it on the
+screen, `max` zooms in on the image so that the whole thing fits, `scale`
+stretchs the image to fit the screen, and `tile` makes the image display in
+tiles across the screen.
+
 #### Files Section
 After a line with the text `files`, any lines with text on them are treated as
 files or directories to be added. Try to use absolute paths. An regular file
@@ -85,6 +103,7 @@ My configuration file looks like this:
 rotate-image
 randomize-order
 time 10s
+mode fill
 
 files
 /home/jason/Dropbox/Backgrounds
@@ -92,4 +111,5 @@ files
 
 #### Command Line Arguments
 The jws executable also accepts command line arguments that supersede the config
-file. Check the soon to exist man page for a list of available options.
+file. Check the man page for a list of available options. They more or less line
+up with the config file options.
