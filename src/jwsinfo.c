@@ -259,8 +259,7 @@ jws_info_set_from_file(JwsInfo *info, const gchar *path, GError **err)
 	GList *iter;
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
 	gboolean has_files = FALSE;
-	for (GList *iter = line_list; iter && !has_files;
-		iter = g_list_next(iter)) {
+	for (iter = line_list; iter && !has_files; iter = g_list_next(iter)) {
 		line = iter->data;
 
 		if (g_str_has_prefix(line, "files"))
