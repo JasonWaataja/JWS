@@ -116,8 +116,7 @@ jws_info_new_from_file(const gchar *path, GError **err)
 gboolean
 jws_info_get_rotate_image(JwsInfo *info)
 {
-	if (!info)
-		return FALSE;
+	g_assert(info);
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
 	return priv->rotate_image;
 }
@@ -125,8 +124,7 @@ jws_info_get_rotate_image(JwsInfo *info)
 void
 jws_info_set_rotate_image(JwsInfo *info, gboolean rotate_image)
 {
-	if (!info)
-		return;
+	g_assert(info);
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
 	priv->rotate_image = rotate_image;
 }
@@ -134,8 +132,7 @@ jws_info_set_rotate_image(JwsInfo *info, gboolean rotate_image)
 JwsTimeValue *
 jws_info_get_rotate_time(JwsInfo *info)
 {
-	if (!info)
-		return NULL;
+	g_assert(info);
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
 	return jws_time_value_copy(priv->rotate_time);
 }
@@ -143,8 +140,8 @@ jws_info_get_rotate_time(JwsInfo *info)
 void
 jws_info_set_rotate_time(JwsInfo *info, JwsTimeValue *time)
 {
-	if (!info || !time)
-		return;
+	g_assert(info);
+	g_assert(time);
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
 	jws_time_value_free(priv->rotate_time);
 	priv->rotate_time = jws_time_value_copy(time);
@@ -153,8 +150,7 @@ jws_info_set_rotate_time(JwsInfo *info, JwsTimeValue *time)
 gboolean
 jws_info_get_randomize_order(JwsInfo *info)
 {
-	if (!info)
-		return FALSE;
+	g_assert(info);
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
 	return priv->randomize_order;
 }
@@ -162,8 +158,7 @@ jws_info_get_randomize_order(JwsInfo *info)
 void
 jws_info_set_randomize_order(JwsInfo *info, gboolean randomize_order)
 {
-	if (!info)
-		return;
+	g_assert(info);
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
 	priv->randomize_order = randomize_order;
 }
@@ -172,8 +167,7 @@ jws_info_set_randomize_order(JwsInfo *info, gboolean randomize_order)
 GList *
 jws_info_get_file_list(JwsInfo *info)
 {
-	if (!info)
-		return NULL;
+	g_assert(info);
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
 	return priv->file_list;
 }
@@ -181,59 +175,163 @@ jws_info_get_file_list(JwsInfo *info)
 void
 jws_info_set_file_list(JwsInfo *info, GList *file_list)
 {
-	if (!info)
-		return;
+	g_assert(info);
+	g_assert(file_list);
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
-	for (GList *iter = priv->file_list; iter != NULL;
-		iter = g_list_next(iter)) {
-		g_free(iter->data);
-		iter->data = NULL;
-	}
-	g_list_free(priv->file_list);
-	priv->file_list = file_list;
+	g_list_free_full(priv->file_list, g_free);
+	priv->file_list = g_list_copy(file_list);
 }
 
 void
 jws_info_add_file(JwsInfo *info, const gchar *path)
 {
-	if (info) {
-		JwsInfoPrivate *priv = jws_info_get_instance_private(info);
-		priv->file_list = g_list_append(priv->file_list,
-			g_strdup(path));
-	}
+	g_assert(info);
+	g_assert(path);
+	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
+	priv->file_list = g_list_append(priv->file_list, g_strdup(path));
 }
 
-void
+gboolean
 jws_info_remove_file(JwsInfo *info, const gchar *path)
 {
-	if (!info)
-		return;
+	g_assert(info);
+	g_assert(path);
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
 	gboolean found_item = FALSE;
-	for (GList *iter = priv->file_list; iter != NULL
-		&& !found_item; iter = g_list_next(iter)) {
-		gchar *iter_path = iter->data;
-		if (g_str_equal(iter_path, path)) {
-			priv->file_list = g_list_remove(priv->file_list,
-				iter_path);
-			found_item = TRUE;
+	GList *current = priv->file_list;
+	while (current) {
+		gchar *current_path = current->data;
+		if (g_str_equal(current_path, path)) {
+			priv->file_list = g_list_delete_link(priv->file_list,
+				current);
+			return TRUE;
 		}
 	}
+	return FALSE;
+}
+
+/*
+ * Sets the time value for info to the information contained in line. Returns
+ * TRUE on success, false on failure and sets err
+ */
+static gboolean
+jws_info_set_time_from_line(JwsInfo *info, const gchar *line, GError **err)
+{
+	g_assert(info);
+	g_assert(line);
+	GRegex *regex;
+	regex = g_regex_new("^time\\s+(\\S.*)$", 0, 0, NULL);
+	g_assert(regex);
+
+	GMatchInfo *match_info = NULL;
+	gboolean found_match = g_regex_match(regex, line, 0, &match_info);
+
+	if (!found_match) {
+		g_set_error(err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE_FORMAT,
+			_("No argument was found to time in line: \"%s\"."),
+			line);
+		g_regex_unref(regex);
+		g_match_info_free(match_info);
+		return FALSE;
+	}
+	gchar *value = g_match_info_fetch(match_info, 1);
+	if (!value || strlen(value) == 0) {
+		g_set_error(err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE_FORMAT,
+			_("Failed to find valid argument to time."));
+		g_regex_unref(regex);
+		g_match_info_free(match_info);
+		g_free(value);
+		return FALSE;
+	}
+	JwsTimeValue *rotate_time = jws_time_value_new_from_string(value);
+	if (!rotate_time) {
+		g_set_error(err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE_FORMAT,
+			_("Failed to parse time sting: \"%s\"."), value);
+		g_regex_unref(regex);
+		g_match_info_free(match_info);
+		g_free(value);
+		return FALSE;
+	}
+	if (jws_time_value_total_seconds(rotate_time) <= 0) {
+		g_set_error(err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE_FORMAT,
+			_("Time must be greater than 0."));
+		g_regex_unref(regex);
+		g_match_info_free(match_info);
+		g_free(value);
+		return FALSE;
+	}
+	jws_info_set_rotate_time(info, rotate_time);
+	jws_time_value_free(rotate_time);
+	g_free(value);
+	g_regex_unref(regex);
+	g_match_info_free(match_info);
+	return TRUE;
+}
+
+/*
+ * Sets the wallpaper mode for info to the value stored in line. Returns TRUE
+ * on success, FALSE on failure and sets err.
+ */
+static gboolean
+jws_info_set_mode_from_line(JwsInfo *info, const gchar *line, GError **err)
+{
+	g_assert(info);
+	g_assert(line);
+	/*
+	 * Match a line starting with mode, then an argument; capture the
+	 * argument.
+	 */
+	GRegex *reg = g_regex_new("^mode\\s+(\\S+)$", 0, 0, NULL);
+	g_assert(reg);
+	GMatchInfo *match_info = NULL;
+	gboolean found_match = g_regex_match(reg, line, 0, &match_info);
+	if (!found_match) {
+		g_set_error(err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE_FORMAT,
+			_("Invalid mode format"));
+		g_regex_unref(reg);
+		g_match_info_free(match_info);
+		return FALSE;
+	}
+	gchar *value = g_match_info_fetch(match_info, 1);
+	if (!value || strlen(value) == 0) {
+		g_set_error(err, JWS_INFO_ERROR,
+			JWS_INFO_ERROR_FILE_FORMAT,
+			_("Couldn't find argument for mode."));
+		g_regex_unref(reg);
+		g_match_info_free(match_info);
+		g_free(value);
+		return FALSE;
+	}
+	JwsWallpaperMode mode;
+	gboolean is_mode = jws_wallpaper_mode_from_info_string(value, &mode);
+	if (!is_mode) {
+		g_set_error(err, JWS_INFO_ERROR,
+			JWS_INFO_ERROR_FILE_FORMAT,
+			_("Unrecognized mode \"%s\"."), value);
+		g_regex_unref(reg);
+		g_match_info_free(match_info);
+		g_free(value);
+		return FALSE;
+	}
+	jws_info_set_mode(info, mode);
+	g_regex_unref(reg);
+	g_match_info_free(match_info);
+	g_free(value);
+	return FALSE;
 }
 
 gboolean
 jws_info_set_from_file(JwsInfo *info, const gchar *path, GError **err)
 {
 	g_assert(info);
+	g_assert(path);
 	jws_info_set_defaults(info);
-
 	GIOChannel *channel = g_io_channel_new_file(path, "r", NULL);
 	if (!channel) {
 		g_set_error(err, JWS_INFO_ERROR, JWS_INFO_ERROR_FILE,
 				_("Failed to open file: \"%s\"."), path);
 		return FALSE;
 	}
-
 	GList *line_list = NULL;
 	gchar *line = NULL;
 	gsize line_length;
@@ -259,9 +357,8 @@ jws_info_set_from_file(JwsInfo *info, const gchar *path, GError **err)
 	GList *iter;
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
 	gboolean has_files = FALSE;
-	for (iter = line_list; iter && !has_files; iter = g_list_next(iter)) {
+	for (iter = line_list; iter && !has_files; iter = iter->next) {
 		line = iter->data;
-
 		if (g_str_has_prefix(line, "files"))
 			has_files = TRUE;
 		else if (g_str_has_prefix(line, "rotate-image"))
@@ -269,144 +366,35 @@ jws_info_set_from_file(JwsInfo *info, const gchar *path, GError **err)
 		else if (g_str_has_prefix(line, "single-image"))
 			priv->rotate_image = FALSE;
 		else if (g_str_has_prefix(line, "time")) {
-			GRegex *regex;
-			regex = g_regex_new("^time\\s+(\\S.*)$", 0, 0, NULL);
-			g_assert(regex);
-
-			GMatchInfo *match_info = NULL;
-			gboolean found_match = g_regex_match(regex, line, 0,
-				&match_info);
-
-			if (!found_match) {
-				g_set_error(err, JWS_INFO_ERROR,
-					JWS_INFO_ERROR_FILE_FORMAT,
-					_("No argument was found to time in line: \"%s\"."),
-					line);
-				g_regex_unref(regex);
-				g_match_info_free(match_info);
-				g_list_free_full(line_list,
-					(GDestroyNotify) g_free);
+			GError *tmp_err = NULL;
+			if (!jws_info_set_time_from_line(info, line, &tmp_err))
+			{
+				g_list_free_full(line_list, g_free);
+				g_propagate_error(err, tmp_err);
 				return FALSE;
 			}
-			gchar *value = g_match_info_fetch(match_info, 1);
-
-			if (!value || strlen(value) <= 0) {
-				g_set_error (err, JWS_INFO_ERROR,
-					JWS_INFO_ERROR_FILE_FORMAT,
-					_("Failed to find valid argument to time."));
-				g_regex_unref(regex);
-				g_match_info_free(match_info);
-				g_list_free_full(line_list,
-					(GDestroyNotify) g_free);
-				/* If it was NULL but had a length of zero. */
-				g_free(value);
-				return FALSE;
-			}
-
-			JwsTimeValue *rotate_time =
-				jws_time_value_new_from_string(value);
-
-			if (!rotate_time) {
-				g_set_error (err, JWS_INFO_ERROR,
-						JWS_INFO_ERROR_FILE_FORMAT,
-						_("Failed to parse time sting: \"%s\"."),
-						value);
-				g_regex_unref(regex);
-				g_match_info_free(match_info);
-				g_list_free_full(line_list,(GDestroyNotify) g_free);
-				g_free(value);
-				return FALSE;
-			}
-
-			if (jws_time_value_total_seconds(rotate_time) <= 0) {
-				g_set_error (err, JWS_INFO_ERROR,
-						JWS_INFO_ERROR_FILE_FORMAT,
-						_("Time must be greater than 0."));
-				g_regex_unref(regex);
-				g_match_info_free(match_info);
-				g_list_free_full(line_list,
-					(GDestroyNotify) g_free);
-				g_free(value);
-				return FALSE;
-			}
-
-			jws_info_set_rotate_time(info, rotate_time);
-
-			jws_time_value_free(rotate_time);
-			g_free(value);
-
-			g_regex_unref(regex);
-			g_match_info_free(match_info);
 		} else if (g_str_has_prefix(line, "randomize-order"))
 			priv->randomize_order = TRUE;
 		else if (g_str_has_prefix(line, "in-order"))
 			priv->randomize_order = FALSE;
 		else if (g_str_has_prefix(line, "mode")) {
-			GRegex *reg = g_regex_new("^mode\\s+(\\S+)$", 0, 0,
-				NULL);
-
-			g_assert(reg);
-
-			GMatchInfo *match_info = NULL;
-			gboolean found_match = g_regex_match(reg, line, 0,
-				&match_info);
-
-			if (!found_match) {
-				g_set_error(err, JWS_INFO_ERROR,
-					JWS_INFO_ERROR_FILE_FORMAT,
-					_("Invalid mode format"));
-				g_list_free_full(line_list,
-					(GDestroyNotify) g_free);
-				g_regex_unref(reg);
-				g_match_info_free(match_info);
+			GError *tmp_err = NULL;
+			if (!jws_info_set_mode_from_line(info, line, &tmp_err))
+			{
+				g_list_free_full(line_list, g_free);
+				g_propagate_error(err, tmp_err);
 				return FALSE;
 			}
-
-			gchar *value = g_match_info_fetch(match_info, 1);
-
-			if (!value || strlen(value) == 0) {
-				g_set_error(err, JWS_INFO_ERROR,
-					JWS_INFO_ERROR_FILE_FORMAT,
-					_("Couldn't find argument for mode."));
-				g_list_free_full(line_list,
-					(GDestroyNotify) g_free);
-				g_regex_unref(reg);
-				g_match_info_free(match_info);
-				g_free(value);
-				return FALSE;
-			}
-
-			JwsWallpaperMode mode;
-			gboolean is_mode =
-				jws_wallpaper_mode_from_info_string(value,
-					&mode);
-
-			if (!is_mode) {
-				g_set_error(err, JWS_INFO_ERROR,
-					JWS_INFO_ERROR_FILE_FORMAT,
-					_("Unrecognized mode \"%s\"."), value);
-				g_list_free_full(line_list,
-					(GDestroyNotify) g_free);
-				g_regex_unref(reg);
-				g_match_info_free(match_info);
-				g_free(value);
-				return FALSE;
-			}
-
-			jws_info_set_mode(info, mode);
-			g_regex_unref(reg);
-			g_match_info_free(match_info);
-			g_free(value);
 		}
 	}
 	if (!has_files) {
 		g_set_error(err, JWS_INFO_ERROR, JWS_INFO_ERROR_NO_FILES,
 			_("No files found."));
-		g_list_free_full(line_list, (GDestroyNotify) g_free);
+		g_list_free_full(line_list, g_free);
 		return FALSE;
 	}
 	gboolean found_file = FALSE;
-	for (; iter != NULL; iter = g_list_next(iter)) {
+	for (; iter != NULL; iter = iter->next) {
 		line = iter->data;
 		if (strlen(line) > 0) {
 			jws_info_add_file(info, line);
@@ -416,19 +404,17 @@ jws_info_set_from_file(JwsInfo *info, const gchar *path, GError **err)
 	if (!found_file) {
 		g_set_error(err, JWS_INFO_ERROR, JWS_INFO_ERROR_NO_FILES,
 			_("No files found."));
-		g_list_free_full(line_list, (GDestroyNotify) g_free);
+		g_list_free_full(line_list, g_free);
 		return FALSE;
 	}
-	g_list_free_full(line_list, (GDestroyNotify) g_free);
+	g_list_free_full(line_list, g_free);
 	return TRUE;
 }
 
 void
 print_jws_info(JwsInfo *info)
 {
-	if (!info)
-		g_print(_("Error: Trying to print null info\n"));
-
+	g_assert(info);
 	JwsInfoPrivate *priv = jws_info_get_instance_private(info);
 	if (priv->rotate_image) {
 		g_print(_("Rotate image\n"));
@@ -449,141 +435,6 @@ print_jws_info(JwsInfo *info)
 		}
 	} else
 		g_print(_("No files to print\n"));
-}
-
-int
-jws_time_value_total_seconds(JwsTimeValue *time)
-{
-	int total = 0;
-	if (time) {
-		total += time->seconds;
-		total += JWS_SECONDS_PER_MINUTE * time->minutes;
-		total += JWS_SECONDS_PER_HOUR * time->hours;
-	}
-	return total;
-}
-
-gboolean
-jws_time_value_equal(JwsTimeValue *a, JwsTimeValue *b)
-{
-	if (!a || !b)
-		return FALSE;
-	return jws_time_value_total_seconds(a) ==
-		jws_time_value_total_seconds(b);
-}
-
-void
-jws_time_value_to_simplest_form(JwsTimeValue *time)
-{
-	if (!time)
-		return;
-
-	int total_seconds = jws_time_value_total_seconds(time);
-
-	if (total_seconds <= 0)
-		return;
-
-	int hours = total_seconds / JWS_SECONDS_PER_HOUR;
-	total_seconds -= hours * JWS_SECONDS_PER_HOUR;
-
-	int minutes = total_seconds / JWS_SECONDS_PER_MINUTE;
-	total_seconds -= minutes * JWS_SECONDS_PER_MINUTE;
-
-	time->hours = hours;
-	time->minutes = minutes;
-	time->seconds = total_seconds;
-}
-
-JwsTimeValue *
-jws_time_value_new()
-{
-	return jws_time_value_new_for_values(0, 0, 0);
-}
-
-JwsTimeValue *
-jws_time_value_new_for_seconds(int seconds)
-{
-	JwsTimeValue *time = jws_time_value_new_for_values(0, 0, seconds);
-	jws_time_value_to_simplest_form(time);
-	return time;
-}
-
-JwsTimeValue *
-jws_time_value_new_from_string(const char *string)
-{
-	GRegex *regex = g_regex_new(
-		"^(\?:(\\d+)h)\?(\?:(\\d+)m)\?(\?:(\\d+)s\?)\?$", 0, 0, NULL);
-	g_assert(regex);
-	GMatchInfo *match_info = NULL;
-	gboolean matched = g_regex_match(regex, string, 0, &match_info);
-	if (!matched)
-		return NULL;
-
-	JwsTimeValue *time = jws_time_value_new_for_values(0, 0, 0);
-
-	gboolean found_num = FALSE;
-	gchar *value = g_match_info_fetch(match_info, 1);
-	if (value && strlen(value) > 0) {
-		time->hours = atoi(value);
-		found_num = TRUE;
-	}
-	g_free(value);
-
-	value = g_match_info_fetch(match_info, 2);
-	if (value && strlen(value) > 0) {
-		time->minutes = atoi(value);
-		found_num = TRUE;
-	}
-	g_free(value);
-
-	value = g_match_info_fetch(match_info, 3);
-	if (value && strlen(value) > 0) {
-		time->seconds = atoi(value);
-		found_num = TRUE;
-	}
-	g_regex_unref(regex);
-	g_match_info_free(match_info);
-
-	if (!found_num)
-		return NULL;
-	return time;
-}
-
-JwsTimeValue *
-jws_time_value_new_for_values(int hours, int minutes, int seconds)
-{
-	JwsTimeValue *time = NULL;
-	time = g_new(JwsTimeValue, 1);
-	time->hours = hours;
-	time->minutes = minutes;
-	time->seconds = seconds;
-	return time;
-}
-
-JwsTimeValue *
-jws_time_value_copy(JwsTimeValue *time)
-{
-	if (!time)
-		return NULL;
-
-	return jws_time_value_new_for_values(time->hours, time->minutes,
-		time->seconds);
-}
-
-void
-jws_time_value_free(JwsTimeValue *value)
-{
-	g_free(value);
-}
-
-void
-jws_time_value_set(JwsTimeValue *time, int hours, int minutes, int seconds)
-{
-	if (!time)
-		return;
-	time->hours = hours;
-	time->minutes = minutes;
-	time->seconds = seconds;
 }
 
 GQuark
