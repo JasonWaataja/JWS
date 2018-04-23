@@ -35,16 +35,18 @@ enum _JwsWallpaperMode {
 
 #define JWS_DEFAULT_WALLPAPER_MODE JWS_WALLPAPER_MODE_FILL
 
-/* Free return value with g_free (). */
+/*
+ * Returns a new a newly allocated string representing mode in command line
+ * argument form for feh, e.g. "--bg-fill". Free the return values with g_free.
+ */
 gchar *
 jws_feh_string_for_mode(JwsWallpaperMode mode);
 
-
 /*
- * Sets the current wallpaper to the file contained in path.  Returns 1 if
- * successful and 0 upon failure.
+ * Sets the current wallpaper to the file contained in path with the given
+ * mode. Returns TRUE on success, false on failure.
  */
-int
+gboolean
 jws_set_wallpaper_from_file(const char *path, JwsWallpaperMode mode);
 
 #endif /* JWS_JWS_SETTER_H */

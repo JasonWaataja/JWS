@@ -50,15 +50,19 @@ jws_feh_string_for_mode(JwsWallpaperMode mode)
 	return mode_str;
 }
 
-int
+gboolean
 jws_set_wallpaper_from_file(const char *path, JwsWallpaperMode mode)
 {
 	gchar *mode_str = jws_feh_string_for_mode(mode);
 	g_assert(mode_str);
 	gchar *set_cmd = g_strconcat("feh ", mode_str, " \"", path, "\"",
 		NULL);
-	int status = system(set_cmd);
 	g_free(mode_str);
+	/*
+	 * TODO: Determine if there is a different way this should be done,
+	 * such as with a glib call.
+	 */
+	int status = system(set_cmd);
 	g_free(set_cmd);
 	return status == 0;
 }
