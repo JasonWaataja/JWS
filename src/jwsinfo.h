@@ -58,8 +58,9 @@ extern const char JWS_INFO_MODE_SCALE[];
 extern const char JWS_INFO_MODE_TILE[];
 
 /*
- * Transforms mode_string representing a wallpaper mode into a JwsWallpaperMode
- * value and stores it in mode. Returns whether or not the parsing succeeded.
+ * Transforms mode_string representing a wallpaper mode into a mode value and
+ * stores it in mode. Returns TRUE on success and FALSE on failure.  Stores
+ * JWS_DEFAULT_WALLPAPER_MODE in mode on failure.
  */
 gboolean
 jws_wallpaper_mode_from_info_string(const gchar *mode_string,

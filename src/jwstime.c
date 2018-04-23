@@ -19,6 +19,10 @@
 
 #include "jwstime.h"
 
+#include <errno.h>
+#include <limits.h>
+#include <string.h>
+
 int
 jws_time_value_total_seconds(JwsTimeValue *time)
 {
@@ -92,29 +96,33 @@ jws_time_value_new_from_string(const char *string)
 	gboolean found_num = FALSE;
 	gchar *value = g_match_info_fetch(match_info, 1);
 	if (value && strlen(value) > 0) {
-		time->hours = atoi(value);
-		found_num = TRUE;
+		errno = 0;
+		time->hours = g_ascii_strtoll(value, NULL, 10);
+		if (errno == 0)
+			found_num = TRUE;
 	}
 	g_free(value);
 
 	value = g_match_info_fetch(match_info, 2);
 	if (value && strlen(value) > 0) {
-		time->minutes = atoi(value);
-		found_num = TRUE;
+		errno = 0;
+		time->minutes = g_ascii_strtoll(value, NULL, 10);
+		if (errno == 0)
+			found_num = TRUE;
 	}
 	g_free(value);
 
 	value = g_match_info_fetch(match_info, 3);
 	if (value && strlen(value) > 0) {
-		time->seconds = atoi(value);
-		found_num = TRUE;
+		errno = 0;
+		time->seconds = g_ascii_strtoll(value, NULL, 10);
+		if (errno == 0)
+			found_num = TRUE;
 	}
 	g_regex_unref(regex);
 	g_match_info_free(match_info);
 
-	if (!found_num)
-		return NULL;
-	return time;
+	return (found_num) ? time : NULL;
 }
 
 JwsTimeValue *
