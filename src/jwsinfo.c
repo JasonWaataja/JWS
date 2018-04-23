@@ -317,7 +317,7 @@ jws_info_set_mode_from_line(JwsInfo *info, const gchar *line, GError **err)
 	g_regex_unref(reg);
 	g_match_info_free(match_info);
 	g_free(value);
-	return FALSE;
+	return TRUE;
 }
 
 /*
@@ -356,6 +356,7 @@ jws_info_process_line(JwsInfo *info, const gchar *line, gboolean *has_files,
 			return FALSE;
 		}
 	}
+	return TRUE;
 }
 
 gboolean

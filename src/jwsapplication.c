@@ -94,7 +94,7 @@ jws_application_open(GApplication *app, GFile **files, gint n_files,
 	for (int i = 0; i < n_files; ++i) {
 		gchar *path = g_file_get_path(files[i]);
 		priv->file_list =
-			jws_add_path_to_list_recursive(priv->file_list, path);
+			jws_add_path_to_list(priv->file_list, path);
 		g_free(path);
 		path = NULL;
 	}
@@ -359,27 +359,6 @@ jws_application_display_images(JwsApplication *app)
 	}
 }
 
-GList *
-jws_create_shuffled_list(GList *list)
-{
-	guint length = g_list_length(list);
-	gpointer *data = g_new(gpointer, length);
-	GList *iter = list;
-	for (int i = 0; i < length; ++i, iter = g_list_next(iter))
-		data[i] = iter->data;
-
-	for (int i = 0; i < length - 1; ++i) {
-		int rand_ind = g_random_int_range(i, length);
-		gpointer temp = data[i];
-		data[i] = data[rand_ind];
-		data[rand_ind] = temp;
-	}
-	GList *new_list = NULL;
-	for (int i = 0; i < length; ++i)
-		new_list = g_list_append(new_list, data[i]);
-	return new_list;
-}
-
 void
 jws_shuffle_list(GList *list)
 {
@@ -400,7 +379,7 @@ jws_shuffle_list(GList *list)
 }
 
 GList *
-jws_add_path_to_list_recursive(GList *list, const char *path)
+jws_add_path_to_list(GList *list, const char *path)
 {
 	GList *new_list = list;
 	if (!path)
@@ -429,29 +408,26 @@ jws_add_path_to_list_recursive(GList *list, const char *path)
 			(GCompareFunc) g_strcmp0);
 		for (GList *list_iter = dirent_list; list_iter;
 			list_iter = g_list_next(list_iter))
-			new_list = jws_add_path_to_list_recursive(new_list,
+			new_list = jws_add_path_to_list(new_list,
 				list_iter->data);
 		g_list_free_full(dirent_list, (GDestroyNotify) g_free);
 		g_object_unref(en);
 	} else if (file_type == G_FILE_TYPE_REGULAR) {
+		/*
+		 * TODO: Fix this redundant g_free if that's the right thing to
+		 * do?
+		 */
 		gchar *file_path = g_file_get_path(as_file);
 		new_list = g_list_append(new_list, g_strdup(file_path));
 		g_free(file_path);
-	} else if (file_type == G_FILE_TYPE_UNKNOWN) {
-	}
+	} else if (file_type == G_FILE_TYPE_UNKNOWN)
+		/*
+		 * TODO: Figure out if this is a programming error or not which
+		 * determines whether an assert here is appropriate.
+		 */
+		g_assert_not_reached();
 	g_object_unref(as_file);
 	return new_list;
-}
-
-GList *
-jws_collect_regular_files_in_directory(const char *path)
-{
-	/*
-	 * I don't think I even have to create a variable here, because I can
-	 * just pass NULL.
-	 */
-	GList *list = jws_add_path_to_list_recursive(list, path);
-	return list;
 }
 
 GList *
@@ -460,7 +436,7 @@ jws_create_file_list_for_info(JwsInfo *info)
 	GList *file_list = NULL;
 	for (GList *iter = jws_info_get_file_list(info); iter != NULL;
 		iter = g_list_next(iter))
-		file_list = jws_add_path_to_list_recursive(file_list,
+		file_list = jws_add_path_to_list(file_list,
 			iter->data);
 	return file_list;
 }
