@@ -70,6 +70,11 @@ struct _JwsCommandLineOptions {
 	gchar *mode;
 };
 
+/* Puts a shallow copy of src into dest. */
+void
+jws_command_line_options_copy(JwsCommandLineOptions *dest,
+	JwsCommandLineOptions *src);
+
 /* Returns the current info for app. */
 JwsInfo *
 jws_application_get_current_info(JwsApplication *app);
@@ -78,11 +83,11 @@ jws_application_get_current_info(JwsApplication *app);
 void
 jws_application_set_current_info(JwsApplication *app, JwsInfo *info);
 
-/* Returns the command line arguments that app is using. */
+/* Returns a pointer to the command line arguments that app is using. */
 JwsCommandLineOptions *
 jws_application_get_command_line_options(JwsApplication *app);
 
-/* Sets the command line options app uses to options. */
+/* Sets the command line options app uses to a copy of options. */
 void
 jws_application_set_command_line_options(JwsApplication *app,
 	JwsCommandLineOptions *options);
@@ -94,7 +99,7 @@ jws_application_set_command_line_options(JwsApplication *app,
 GList *
 jws_application_get_file_list(JwsApplication *app);
 
-/* Sets the file list to use for app to file_list. */
+/* Sets the file list to use for app to a copy of file_list. */
 void
 jws_application_set_file_list(JwsApplication *app, GList *file_list);
 

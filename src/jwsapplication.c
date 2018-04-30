@@ -22,6 +22,7 @@
 #include <gio/gio.h>
 #include <glib.h>
 #include <glib/gi18n.h>
+#include <string.h>
 
 #include "jwsinfo.h"
 #include "jwssetter.h"
@@ -54,7 +55,8 @@ G_DEFINE_TYPE_WITH_PRIVATE(JwsApplication, jws_application,
 static void
 jws_application_init(JwsApplication *self)
 {
-	JwsApplicationPrivate *priv = jws_application_get_instance_private(self);
+	JwsApplicationPrivate *priv =
+		jws_application_get_instance_private(self);
 	priv->config_file = NULL;
 	priv->current_info = jws_info_new();
 	priv->cmd_options.config_file = NULL;
@@ -117,12 +119,7 @@ jws_application_finalize(GObject *obj)
 	JwsApplicationPrivate *priv =
 		jws_application_get_instance_private(JWS_APPLICATION(obj));
 	g_free(priv->config_file);
-	for (GList *iter = g_list_first(priv->file_list); iter != NULL;
-		iter = g_list_next(iter)) {
-		g_free(iter->data);
-		iter->data = NULL;
-	}
-	g_list_free(priv->file_list);
+	g_list_free_full(priv->file_list, g_free);
 	G_OBJECT_CLASS(jws_application_parent_class)->finalize(obj);
 }
 
@@ -134,6 +131,14 @@ jws_application_class_init(JwsApplicationClass *kclass)
 	G_APPLICATION_CLASS(kclass)->activate = jws_application_activate;
 	G_APPLICATION_CLASS(kclass)->startup = jws_application_startup;
 	G_APPLICATION_CLASS(kclass)->open = jws_application_open;
+}
+
+void
+jws_command_line_options_copy(JwsCommandLineOptions *dest,
+	JwsCommandLineOptions *src)
+{
+	/* TODO: Figure out if this is a good idea. */
+	memcpy(dest, src, sizeof(JwsCommandLineOptions));
 }
 
 JwsApplication *
@@ -149,10 +154,8 @@ handle_local_options(GApplication *app, GVariantDict *options,
 {
 	JwsApplicationPrivate *priv =
 		jws_application_get_instance_private(JWS_APPLICATION(app));
-
 	JwsCommandLineOptions *as_cmd_options =
 		(JwsCommandLineOptions *) cmd_options;
-
 	if (as_cmd_options->config_file)
 		priv->config_file = g_strdup(as_cmd_options->config_file);
 	if (!priv->config_file)
@@ -169,8 +172,10 @@ handle_local_options(GApplication *app, GVariantDict *options,
 			g_printerr("Error reading file \"%s\": %s\n",
 				priv->config_file, err->message);
 			g_error_free(err);
+			/* TODO: Figure out if this should return. */
 		}
 	}
+	/* TODO: Re-write this part */
 	if (as_cmd_options->rotate_image)
 		jws_info_set_rotate_image(priv->current_info, TRUE);
 	if (as_cmd_options->single_image)
@@ -197,7 +202,6 @@ handle_local_options(GApplication *app, GVariantDict *options,
 		JwsWallpaperMode mode;
 		gboolean is_mode = jws_wallpaper_mode_from_info_string(
 			as_cmd_options->mode, &mode);
-
 		if (is_mode)
 			jws_info_set_mode(priv->current_info, mode);
 		else
@@ -210,18 +214,17 @@ handle_local_options(GApplication *app, GVariantDict *options,
 JwsInfo *
 jws_application_get_current_info(JwsApplication *app)
 {
-	if (!app)
-		return NULL;
-	JwsApplicationPrivate *priv;
-	priv = jws_application_get_instance_private(app);
+	g_assert(app);
+	JwsApplicationPrivate *priv =
+		jws_application_get_instance_private(app);
 	return priv->current_info;
 }
 
 void
 jws_application_set_current_info(JwsApplication *app, JwsInfo *info)
 {
-	if (!app)
-		return;
+	g_assert(app);
+	g_assert(info);
 	JwsApplicationPrivate *priv =
 		jws_application_get_instance_private(app);
 	g_object_unref(G_OBJECT(priv->current_info));
@@ -232,8 +235,7 @@ jws_application_set_current_info(JwsApplication *app, JwsInfo *info)
 JwsCommandLineOptions *
 jws_application_get_command_line_options(JwsApplication *app)
 {
-	if (!app)
-		return NULL;
+	g_assert(app);
 	JwsApplicationPrivate *priv =
 		jws_application_get_instance_private(app);
 	return &priv->cmd_options;
@@ -243,18 +245,17 @@ void
 jws_application_set_command_line_options(JwsApplication *app,
 	JwsCommandLineOptions *options)
 {
-	if (!app || !options)
-		return;
+	g_assert(app);
+	g_assert(options);
 	JwsApplicationPrivate *priv =
 		jws_application_get_instance_private(app);
-	priv->cmd_options = *options;
+	jws_command_line_options_copy(&priv->cmd_options, options);
 }
 
 GList *
 jws_application_get_file_list(JwsApplication *app)
 {
-	if (!app)
-		return NULL;
+	g_assert(app);
 	JwsApplicationPrivate *priv =
 		jws_application_get_instance_private(app);
 	return priv->file_list;
@@ -263,17 +264,11 @@ jws_application_get_file_list(JwsApplication *app)
 void
 jws_application_set_file_list(JwsApplication *app, GList *file_list)
 {
-	if (!app)
-		return;
+	g_assert(app);
 	JwsApplicationPrivate *priv =
 		jws_application_get_instance_private(app);
-	for (GList *iter = g_list_first(priv->file_list); iter != NULL;
-		iter = g_list_next(iter)) {
-		g_free(iter->data);
-		iter->data = NULL;
-	}
-	g_list_free(priv->file_list);
-	priv->file_list = file_list;
+	g_list_free_full(priv->file_list, g_free);
+	priv->file_list = g_list_copy(file_list);
 }
 
 gboolean
