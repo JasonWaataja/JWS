@@ -49,7 +49,10 @@ jws_time_value_new_for_seconds(int seconds);
 JwsTimeValue *
 jws_time_value_new_for_values(int hours, int minutes, int seconds);
 
-/* Returns NULL upon failure. Takes args of the form xxHyyMkkS. */
+/*
+ * Returns a new time with value equal to the value parsed in string or NULL if
+ * there's a failure. Takes args of the form xxHyyMkkS.
+ */
 JwsTimeValue *
 jws_time_value_new_from_string(const char *string);
 
