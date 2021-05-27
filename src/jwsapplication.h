@@ -26,8 +26,9 @@
 #include "jwsinfo.h"
 
 #define JWS_TYPE_APPLICATION (jws_application_get_type())
-#define JWS_APPLICATION(obj) \
-	(G_TYPE_CHECK_INSTANCE_CAST((obj), JWS_TYPE_APPLICATION, JwsApplication))
+#define JWS_APPLICATION(obj)                                                   \
+	(G_TYPE_CHECK_INSTANCE_CAST((obj), JWS_TYPE_APPLICATION,               \
+		JwsApplication))
 
 /*
  * A JwsApplication is a glib application that manages wallpapers from the
@@ -112,8 +113,7 @@ jws_application_get_should_exit_loop(JwsApplication *app);
  * safe.
  */
 void
-jws_application_set_should_exit_loop(JwsApplication *app,
-	gboolean should_exit);
+jws_application_set_should_exit_loop(JwsApplication *app, gboolean should_exit);
 
 /*
  * Sets app to stop its main loop. Thread safe.

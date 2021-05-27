@@ -17,24 +17,17 @@
  * along with JWS.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <locale.h>
-#include <stdio.h>
-
 #include <gio/gio.h>
 #include <glib/gi18n.h>
+#include <stdio.h>
 
 #include "jwsapplication.h"
 
-void
-init_gettext();
-
-void
-set_command_line_options(JwsApplication *app);
+void set_command_line_options(JwsApplication *app);
 
 int
 main(int argc, char *argv[])
 {
-	init_gettext();
 	JwsApplication *app = jws_application_new();
 	set_command_line_options(app);
 	int status = g_application_run(G_APPLICATION(app), argc, argv);
@@ -42,37 +35,31 @@ main(int argc, char *argv[])
 	return status;
 }
 
-void
-init_gettext ()
-{
-	setlocale (LC_ALL, "");
-	bindtextdomain (PACKAGE, LOCALEDIR);
-	textdomain (PACKAGE);
-}
-
 static GOptionEntry option_entries[] = {
-	{"config-file", 'c', 0, G_OPTION_ARG_FILENAME,
-		NULL, "Specify file to load config from, default is ~/.jws",
-		NULL},
+	{"config-file", 'c', 0, G_OPTION_ARG_FILENAME, NULL,
+		"Specify file to load config from, default is ~/.jws", NULL},
 	{"rotate-image", 'r', 0, G_OPTION_ARG_NONE, NULL, "Change the image",
 		NULL},
 	{"single-image", 'i', 0, G_OPTION_ARG_NONE, NULL,
 		"Display one image only", NULL},
 	{"randomize-order", 's', 0, G_OPTION_ARG_NONE, NULL,
 		"Shuffle the images", NULL},
-	{"in-order", 'o', 0, G_OPTION_ARG_NONE, NULL,
-		"Display images in order", NULL},
+	{"in-order", 'o', 0, G_OPTION_ARG_NONE, NULL, "Display images in order",
+		NULL},
 	{"time", 't', 0, G_OPTION_ARG_STRING, NULL,
-		"Time between changing image of the form [XXh][YYm][ZZs] or just a " "seconds value",
+		"Time between changing image of the form [XXh][YYm][ZZs] or "
+		"just a "
+		"seconds value",
 		NULL},
 	{"mode", 'm', 0, G_OPTION_ARG_STRING, NULL,
-		"Mode for displaying image: \"fill\", \"center\", \"max\", \"scale\" and" " \"tile\"",
+		"Mode for displaying image: \"fill\", \"center\", \"max\", "
+		"\"scale\" and"
+		" \"tile\"",
 		NULL},
-	{NULL}
-};
+	{NULL}};
 
 void
-set_command_line_options (JwsApplication *app)
+set_command_line_options(JwsApplication *app)
 {
 	JwsCommandLineOptions *options =
 		jws_application_get_command_line_options(app);
@@ -84,6 +71,6 @@ set_command_line_options (JwsApplication *app)
 	option_entries[5].arg_data = &options->rotate_time;
 	option_entries[6].arg_data = &options->mode;
 	g_application_add_main_option_entries(G_APPLICATION(app),
-			option_entries);
+		option_entries);
 }
 

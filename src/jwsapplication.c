@@ -49,8 +49,7 @@ struct _JwsApplicationPrivate {
 	GMutex signal_mutex;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE(JwsApplication, jws_application,
-	G_TYPE_APPLICATION);
+G_DEFINE_TYPE_WITH_PRIVATE(JwsApplication, jws_application, G_TYPE_APPLICATION);
 
 static void
 jws_application_init(JwsApplication *self)
@@ -82,21 +81,18 @@ jws_application_startup(GApplication *app)
 static void
 jws_application_activate(GApplication *app)
 {
-	JwsApplicationPrivate *priv =
-		jws_application_get_instance_private(JWS_APPLICATION(app));
 	jws_application_display_images(JWS_APPLICATION(app));
 }
 
 static void
 jws_application_open(GApplication *app, GFile **files, gint n_files,
-	const gchar *hint)
+	const gchar *)
 {
 	JwsApplicationPrivate *priv =
 		jws_application_get_instance_private(JWS_APPLICATION(app));
 	for (int i = 0; i < n_files; ++i) {
 		gchar *path = g_file_get_path(files[i]);
-		priv->file_list =
-			jws_add_path_to_list(priv->file_list, path);
+		priv->file_list = jws_add_path_to_list(priv->file_list, path);
 		g_free(path);
 		path = NULL;
 	}
@@ -149,13 +145,12 @@ jws_application_new()
 }
 
 gint
-handle_local_options(GApplication *app, GVariantDict *options,
-	gpointer cmd_options)
+handle_local_options(GApplication *app, GVariantDict *, gpointer cmd_options)
 {
 	JwsApplicationPrivate *priv =
 		jws_application_get_instance_private(JWS_APPLICATION(app));
 	JwsCommandLineOptions *as_cmd_options =
-		(JwsCommandLineOptions *) cmd_options;
+		(JwsCommandLineOptions *)cmd_options;
 	if (as_cmd_options->config_file)
 		priv->config_file = g_strdup(as_cmd_options->config_file);
 	if (!priv->config_file)
@@ -192,7 +187,8 @@ handle_local_options(GApplication *app, GVariantDict *options,
 				as_cmd_options->rotate_time);
 		else if (jws_time_value_total_seconds(rotate_time) <= 0)
 			g_printerr(
-				_("Error, must use a time value greater than zero.\n"));
+				_("Error, must use a time value greater than "
+				  "zero.\n"));
 		else
 			jws_info_set_rotate_time(priv->current_info,
 				rotate_time);
@@ -215,8 +211,7 @@ JwsInfo *
 jws_application_get_current_info(JwsApplication *app)
 {
 	g_assert(app);
-	JwsApplicationPrivate *priv =
-		jws_application_get_instance_private(app);
+	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
 	return priv->current_info;
 }
 
@@ -225,8 +220,7 @@ jws_application_set_current_info(JwsApplication *app, JwsInfo *info)
 {
 	g_assert(app);
 	g_assert(info);
-	JwsApplicationPrivate *priv =
-		jws_application_get_instance_private(app);
+	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
 	g_object_unref(G_OBJECT(priv->current_info));
 	priv->current_info = info;
 	g_object_ref(priv->current_info);
@@ -236,8 +230,7 @@ JwsCommandLineOptions *
 jws_application_get_command_line_options(JwsApplication *app)
 {
 	g_assert(app);
-	JwsApplicationPrivate *priv =
-		jws_application_get_instance_private(app);
+	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
 	return &priv->cmd_options;
 }
 
@@ -247,8 +240,7 @@ jws_application_set_command_line_options(JwsApplication *app,
 {
 	g_assert(app);
 	g_assert(options);
-	JwsApplicationPrivate *priv =
-		jws_application_get_instance_private(app);
+	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
 	jws_command_line_options_copy(&priv->cmd_options, options);
 }
 
@@ -256,8 +248,7 @@ GList *
 jws_application_get_file_list(JwsApplication *app)
 {
 	g_assert(app);
-	JwsApplicationPrivate *priv =
-		jws_application_get_instance_private(app);
+	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
 	return priv->file_list;
 }
 
@@ -265,8 +256,7 @@ void
 jws_application_set_file_list(JwsApplication *app, GList *file_list)
 {
 	g_assert(app);
-	JwsApplicationPrivate *priv =
-		jws_application_get_instance_private(app);
+	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
 	g_list_free_full(priv->file_list, g_free);
 	priv->file_list = g_list_copy(file_list);
 }
@@ -275,8 +265,7 @@ gboolean
 jws_application_get_should_exit_loop(JwsApplication *app)
 {
 	gboolean should_exit = FALSE;
-	if (app)
-	{
+	if (app) {
 		JwsApplicationPrivate *priv =
 			jws_application_get_instance_private(app);
 		g_mutex_lock(&priv->signal_mutex);
@@ -291,8 +280,7 @@ jws_application_set_should_exit_loop(JwsApplication *app, gboolean should_exit)
 {
 	if (!app)
 		return;
-	JwsApplicationPrivate *priv =
-		jws_application_get_instance_private(app);
+	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
 	g_mutex_lock(&priv->signal_mutex);
 	priv->received_stop_signal = should_exit;
 	g_mutex_unlock(&priv->signal_mutex);
@@ -308,8 +296,7 @@ jws_application_stop_main_loop(JwsApplication *app)
 void
 jws_application_display_images(JwsApplication *app)
 {
-	JwsApplicationPrivate *priv =
-		jws_application_get_instance_private(app);
+	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
 
 	GList *file_list = jws_create_file_list_for_info(priv->current_info);
 
@@ -329,12 +316,12 @@ jws_application_display_images(JwsApplication *app)
 		while (!jws_application_get_should_exit_loop(app)) {
 			if (jws_info_get_randomize_order(priv->current_info))
 				jws_shuffle_list(priv->file_list);
-			GList *iter;
-			for (GList *iter = priv->file_list; iter != NULL
-				&& !jws_application_get_should_exit_loop(app);
+			for (GList *iter = priv->file_list;
+				iter != NULL &&
+				!jws_application_get_should_exit_loop(app);
 				iter = g_list_next(iter)) {
 				char *path = iter->data;
-				jws_set_wallpaper_from_file (path,
+				jws_set_wallpaper_from_file(path,
 					jws_info_get_mode(priv->current_info));
 				JwsTimeValue *rotate_time =
 					jws_info_get_rotate_time(
@@ -342,14 +329,14 @@ jws_application_display_images(JwsApplication *app)
 				int rotate_seconds =
 					jws_time_value_total_seconds(
 						rotate_time);
-				gulong sleep_time = rotate_seconds
-					* G_USEC_PER_SEC;
+				gulong sleep_time =
+					rotate_seconds * G_USEC_PER_SEC;
 				g_usleep(sleep_time);
 			}
 		}
 	} else {
 		char *path = g_list_first(priv->file_list)->data;
-		jws_set_wallpaper_from_file (path,
+		jws_set_wallpaper_from_file(path,
 			jws_info_get_mode(priv->current_info));
 	}
 }
@@ -357,7 +344,7 @@ jws_application_display_images(JwsApplication *app)
 void
 jws_shuffle_list(GList *list)
 {
-	guint length = g_list_length(list);
+	int length = g_list_length(list);
 	gpointer *data = g_new(gpointer, length);
 	GList *iter = list;
 	for (int i = 0; i < length; ++i, iter = g_list_next(iter))
@@ -381,8 +368,8 @@ jws_add_path_to_list(GList *list, const char *path)
 		return new_list;
 	GFile *as_file = g_file_new_for_path(path);
 	GFileType file_type;
-	file_type = g_file_query_file_type(as_file, G_FILE_QUERY_INFO_NONE,
-		NULL);
+	file_type =
+		g_file_query_file_type(as_file, G_FILE_QUERY_INFO_NONE, NULL);
 	if (file_type == G_FILE_TYPE_DIRECTORY) {
 		GFileEnumerator *en = g_file_enumerate_children(as_file, "*",
 			G_FILE_QUERY_INFO_NONE, NULL, NULL);
@@ -399,13 +386,12 @@ jws_add_path_to_list(GList *list, const char *path)
 			result = g_file_enumerator_iterate(en, &dirent_info,
 				&dirent_file, NULL, NULL);
 		}
-		dirent_list = g_list_sort(dirent_list,
-			(GCompareFunc) g_strcmp0);
+		dirent_list = g_list_sort(dirent_list, (GCompareFunc)g_strcmp0);
 		for (GList *list_iter = dirent_list; list_iter;
 			list_iter = g_list_next(list_iter))
-			new_list = jws_add_path_to_list(new_list,
-				list_iter->data);
-		g_list_free_full(dirent_list, (GDestroyNotify) g_free);
+			new_list =
+				jws_add_path_to_list(new_list, list_iter->data);
+		g_list_free_full(dirent_list, (GDestroyNotify)g_free);
 		g_object_unref(en);
 	} else if (file_type == G_FILE_TYPE_REGULAR) {
 		/*
@@ -431,8 +417,7 @@ jws_create_file_list_for_info(JwsInfo *info)
 	GList *file_list = NULL;
 	for (GList *iter = jws_info_get_file_list(info); iter != NULL;
 		iter = g_list_next(iter))
-		file_list = jws_add_path_to_list(file_list,
-			iter->data);
+		file_list = jws_add_path_to_list(file_list, iter->data);
 	return file_list;
 }
 
