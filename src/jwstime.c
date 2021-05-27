@@ -28,11 +28,9 @@ jws_time_value_total_seconds(JwsTimeValue *time)
 {
 	g_assert(time);
 	int total = 0;
-	if (time) {
-		total += time->seconds;
-		total += JWS_SECONDS_PER_MINUTE * time->minutes;
-		total += JWS_SECONDS_PER_HOUR * time->hours;
-	}
+	total += time->seconds;
+	total += JWS_SECONDS_PER_MINUTE * time->minutes;
+	total += JWS_SECONDS_PER_HOUR * time->hours;
 	return total;
 }
 
@@ -79,9 +77,9 @@ JwsTimeValue *
 jws_time_value_new_from_string(const char *string)
 {
 	/*
-	 * Match an entire line numbers followed by an h, m, or s which each
-	 * being optional. Captures numbers of the form specified in this
-	 * method's header.
+	 * Match an entire line followed by an h, m, or s with each being
+	 * optional. Captures numbers of the form specified in this method's
+	 * header.
 	 */
 	GRegex *regex = g_regex_new(
 		"^(\?:(\\d+)h)\?(\?:(\\d+)m)\?(\?:(\\d+)s\?)\?$", 0, 0, NULL);

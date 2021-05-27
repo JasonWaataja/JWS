@@ -133,6 +133,8 @@ void
 jws_command_line_options_copy(JwsCommandLineOptions *dest,
 	JwsCommandLineOptions *src)
 {
+	g_assert(dest);
+	g_assert(src);
 	/* TODO: Figure out if this is a good idea. */
 	memcpy(dest, src, sizeof(JwsCommandLineOptions));
 }
@@ -264,22 +266,19 @@ jws_application_set_file_list(JwsApplication *app, GList *file_list)
 gboolean
 jws_application_get_should_exit_loop(JwsApplication *app)
 {
+	g_assert(app);
 	gboolean should_exit = FALSE;
-	if (app) {
-		JwsApplicationPrivate *priv =
-			jws_application_get_instance_private(app);
-		g_mutex_lock(&priv->signal_mutex);
-		should_exit = priv->received_stop_signal;
-		g_mutex_unlock(&priv->signal_mutex);
-	}
+	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
+	g_mutex_lock(&priv->signal_mutex);
+	should_exit = priv->received_stop_signal;
+	g_mutex_unlock(&priv->signal_mutex);
 	return should_exit;
 }
 
 void
 jws_application_set_should_exit_loop(JwsApplication *app, gboolean should_exit)
 {
-	if (!app)
-		return;
+	g_assert(app);
 	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
 	g_mutex_lock(&priv->signal_mutex);
 	priv->received_stop_signal = should_exit;
@@ -289,13 +288,14 @@ jws_application_set_should_exit_loop(JwsApplication *app, gboolean should_exit)
 void
 jws_application_stop_main_loop(JwsApplication *app)
 {
-	if (app)
-		jws_application_set_should_exit_loop(app, TRUE);
+	g_assert(app);
+	jws_application_set_should_exit_loop(app, TRUE);
 }
 
 void
 jws_application_display_images(JwsApplication *app)
 {
+	g_assert(app);
 	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
 
 	GList *file_list = jws_create_file_list_for_info(priv->current_info);
@@ -306,38 +306,39 @@ jws_application_display_images(JwsApplication *app)
 		g_printerr(_("Error: No images to display.\n"));
 		return;
 	}
-	if (jws_info_get_rotate_image(priv->current_info)) {
-		jws_application_set_should_exit_loop(app, FALSE);
-		/*
-		 * Loop forever.  It doesn't matter because the way to start
-		 * the progam is by running it in the background.  You can kill
-		 * it by sending SIGINT, though.
-		 */
-		while (!jws_application_get_should_exit_loop(app)) {
-			if (jws_info_get_randomize_order(priv->current_info))
-				jws_shuffle_list(priv->file_list);
-			for (GList *iter = priv->file_list;
-				iter != NULL &&
-				!jws_application_get_should_exit_loop(app);
-				iter = g_list_next(iter)) {
-				char *path = iter->data;
-				jws_set_wallpaper_from_file(path,
-					jws_info_get_mode(priv->current_info));
-				JwsTimeValue *rotate_time =
-					jws_info_get_rotate_time(
-						priv->current_info);
-				int rotate_seconds =
-					jws_time_value_total_seconds(
-						rotate_time);
-				gulong sleep_time =
-					rotate_seconds * G_USEC_PER_SEC;
-				g_usleep(sleep_time);
-			}
-		}
-	} else {
+	if (jws_info_get_rotate_image(priv->current_info))
+		jws_application_display_rotate_images(app);
+	else {
 		char *path = g_list_first(priv->file_list)->data;
 		jws_set_wallpaper_from_file(path,
 			jws_info_get_mode(priv->current_info));
+	}
+}
+
+void
+jws_application_display_rotate_images(JwsApplication *app)
+{
+	g_assert(app);
+	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
+	jws_application_set_should_exit_loop(app, FALSE);
+	/* Loop forever until receiving a signal. */
+	while (!jws_application_get_should_exit_loop(app)) {
+		if (jws_info_get_randomize_order(priv->current_info))
+			jws_shuffle_list(priv->file_list);
+		for (GList *iter = priv->file_list;
+			iter != NULL &&
+			!jws_application_get_should_exit_loop(app);
+			iter = g_list_next(iter)) {
+			char *path = iter->data;
+			jws_set_wallpaper_from_file(path,
+				jws_info_get_mode(priv->current_info));
+			JwsTimeValue *rotate_time =
+				jws_info_get_rotate_time(priv->current_info);
+			int rotate_seconds =
+				jws_time_value_total_seconds(rotate_time);
+			gulong sleep_time = rotate_seconds * G_USEC_PER_SEC;
+			g_usleep(sleep_time);
+		}
 	}
 }
 
@@ -347,28 +348,30 @@ jws_shuffle_list(GList *list)
 	int length = g_list_length(list);
 	gpointer *data = g_new(gpointer, length);
 	GList *iter = list;
-	for (int i = 0; i < length; ++i, iter = g_list_next(iter))
+	for (int i = 0; i < length; ++i) {
 		data[i] = iter->data;
-	for (int i = 0; i < length - 1; ++i) {
-		int rand_ind = g_random_int_range(i, length);
-		gpointer temp = data[i];
-		data[i] = data[rand_ind];
-		data[rand_ind] = temp;
+		iter = iter->next;
+	}
+	for (int i = 0; i < length; ++i) {
+		int rand_index = g_random_int_range(i, length);
+		gpointer tmp = data[i];
+		data[i] = data[rand_index];
+		data[rand_index] = tmp;
 	}
 	iter = list;
-	for (int i = 0; i < length; ++i, iter = g_list_next(iter))
+	for (int i = 0; i < length; ++i) {
 		iter->data = data[i];
+		iter = iter->next;
+	}
+	g_free(data);
 }
 
 GList *
 jws_add_path_to_list(GList *list, const char *path)
 {
-	GList *new_list = list;
-	if (!path)
-		return new_list;
+	g_assert(path);
 	GFile *as_file = g_file_new_for_path(path);
-	GFileType file_type;
-	file_type =
+	GFileType file_type =
 		g_file_query_file_type(as_file, G_FILE_QUERY_INFO_NONE, NULL);
 	if (file_type == G_FILE_TYPE_DIRECTORY) {
 		GFileEnumerator *en = g_file_enumerate_children(as_file, "*",
@@ -389,31 +392,23 @@ jws_add_path_to_list(GList *list, const char *path)
 		dirent_list = g_list_sort(dirent_list, (GCompareFunc)g_strcmp0);
 		for (GList *list_iter = dirent_list; list_iter;
 			list_iter = g_list_next(list_iter))
-			new_list =
-				jws_add_path_to_list(new_list, list_iter->data);
+			list = jws_add_path_to_list(list, list_iter->data);
 		g_list_free_full(dirent_list, (GDestroyNotify)g_free);
 		g_object_unref(en);
 	} else if (file_type == G_FILE_TYPE_REGULAR) {
-		/*
-		 * TODO: Fix this redundant g_free if that's the right thing to
-		 * do?
-		 */
 		gchar *file_path = g_file_get_path(as_file);
-		new_list = g_list_append(new_list, g_strdup(file_path));
+		list = g_list_append(list, g_strdup(file_path));
 		g_free(file_path);
 	} else if (file_type == G_FILE_TYPE_UNKNOWN)
-		/*
-		 * TODO: Figure out if this is a programming error or not which
-		 * determines whether an assert here is appropriate.
-		 */
-		g_assert_not_reached();
+		g_printerr(_("File does not exist: %s\n"), path);
 	g_object_unref(as_file);
-	return new_list;
+	return list;
 }
 
 GList *
 jws_create_file_list_for_info(JwsInfo *info)
 {
+	g_assert(info);
 	GList *file_list = NULL;
 	for (GList *iter = jws_info_get_file_list(info); iter != NULL;
 		iter = g_list_next(iter))

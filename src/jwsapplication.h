@@ -80,7 +80,7 @@ jws_command_line_options_copy(JwsCommandLineOptions *dest,
 JwsInfo *
 jws_application_get_current_info(JwsApplication *app);
 
-/* Sets the info for app to info. */
+/* Sets the info for app to info, incrementing its reference count. */
 void
 jws_application_set_current_info(JwsApplication *app, JwsInfo *info);
 
@@ -128,6 +128,10 @@ jws_application_stop_main_loop(JwsApplication *app);
 void
 jws_application_display_images(JwsApplication *app);
 
+/* Enters infinite loop of displaying each image in the file list. */
+void
+jws_application_display_rotate_images(JwsApplication *app);
+
 /* Randomizes the order of list. */
 void
 jws_shuffle_list(GList *list);
@@ -143,6 +147,8 @@ jws_create_file_list_for_info(JwsInfo *info);
 /*
  * Adds all regular files in path to list recursively and return the result.
  * Doesn't add directories, but rather all the regular files that are children.
+ * Returns the new front of the list, the returned list is not modified if
+ * there is a failure.
  */
 GList *
 jws_add_path_to_list(GList *list, const char *path);
