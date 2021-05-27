@@ -19,10 +19,12 @@
 
 #include "jwsapplication.h"
 
+#include <stdbool.h>
+#include <string.h>
+
 #include <gio/gio.h>
 #include <glib.h>
 #include <glib/gi18n.h>
-#include <string.h>
 
 #include "jwsinfo.h"
 #include "jwssetter.h"
@@ -38,13 +40,13 @@ struct _JwsApplicationClass {
 typedef struct _JwsApplicationPrivate JwsApplicationPrivate;
 
 struct _JwsApplicationPrivate {
-	gchar *config_file;
+	char *config_file;
 	JwsInfo *current_info;
 	JwsCommandLineOptions cmd_options;
 	GList *file_list;
 
 	/* To get out of the main loop on the unix signal. */
-	gboolean received_stop_signal;
+	bool received_stop_signal;
 	/* Mutex to do this thread safely. */
 	GMutex signal_mutex;
 };
@@ -59,14 +61,14 @@ jws_application_init(JwsApplication *self)
 	priv->config_file = NULL;
 	priv->current_info = jws_info_new();
 	priv->cmd_options.config_file = NULL;
-	priv->cmd_options.rotate_image = FALSE;
-	priv->cmd_options.single_image = FALSE;
-	priv->cmd_options.randomize_order = FALSE;
-	priv->cmd_options.in_order = FALSE;
+	priv->cmd_options.rotate_image = false;
+	priv->cmd_options.single_image = false;
+	priv->cmd_options.randomize_order = false;
+	priv->cmd_options.in_order = false;
 	priv->cmd_options.rotate_time = NULL;
 	priv->cmd_options.mode = NULL;
 	priv->file_list = NULL;
-	priv->received_stop_signal = FALSE;
+	priv->received_stop_signal = false;
 	g_mutex_init(&priv->signal_mutex);
 	g_signal_connect(G_OBJECT(self), "handle-local-options",
 		G_CALLBACK(handle_local_options), &priv->cmd_options);
@@ -86,12 +88,13 @@ jws_application_activate(GApplication *app)
 
 static void
 jws_application_open(GApplication *app, GFile **files, gint n_files,
-	const gchar *)
+	const char *hint)
 {
+	(void)hint;
 	JwsApplicationPrivate *priv =
 		jws_application_get_instance_private(JWS_APPLICATION(app));
 	for (int i = 0; i < n_files; ++i) {
-		gchar *path = g_file_get_path(files[i]);
+		char *path = g_file_get_path(files[i]);
 		priv->file_list = jws_add_path_to_list(priv->file_list, path);
 		g_free(path);
 		path = NULL;
@@ -146,9 +149,11 @@ jws_application_new()
 		"com.waataja.jws", "flags", G_APPLICATION_HANDLES_OPEN, NULL);
 }
 
-gint
-handle_local_options(GApplication *app, GVariantDict *, gpointer cmd_options)
+int
+handle_local_options(GApplication *app, GVariantDict *options,
+	gpointer cmd_options)
 {
+	(void)options;
 	JwsApplicationPrivate *priv =
 		jws_application_get_instance_private(JWS_APPLICATION(app));
 	JwsCommandLineOptions *as_cmd_options =
@@ -174,13 +179,13 @@ handle_local_options(GApplication *app, GVariantDict *, gpointer cmd_options)
 	}
 	/* TODO: Re-write this part */
 	if (as_cmd_options->rotate_image)
-		jws_info_set_rotate_image(priv->current_info, TRUE);
+		jws_info_set_rotate_image(priv->current_info, true);
 	if (as_cmd_options->single_image)
-		jws_info_set_rotate_image(priv->current_info, FALSE);
+		jws_info_set_rotate_image(priv->current_info, false);
 	if (as_cmd_options->randomize_order)
-		jws_info_set_randomize_order(priv->current_info, TRUE);
+		jws_info_set_randomize_order(priv->current_info, true);
 	if (as_cmd_options->in_order)
-		jws_info_set_randomize_order(priv->current_info, FALSE);
+		jws_info_set_randomize_order(priv->current_info, false);
 	if (as_cmd_options->rotate_time) {
 		JwsTimeValue *rotate_time = jws_time_value_new_from_string(
 			as_cmd_options->rotate_time);
@@ -263,11 +268,11 @@ jws_application_set_file_list(JwsApplication *app, GList *file_list)
 	priv->file_list = g_list_copy(file_list);
 }
 
-gboolean
+bool
 jws_application_get_should_exit_loop(JwsApplication *app)
 {
 	g_assert(app);
-	gboolean should_exit = FALSE;
+	bool should_exit = false;
 	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
 	g_mutex_lock(&priv->signal_mutex);
 	should_exit = priv->received_stop_signal;
@@ -276,7 +281,7 @@ jws_application_get_should_exit_loop(JwsApplication *app)
 }
 
 void
-jws_application_set_should_exit_loop(JwsApplication *app, gboolean should_exit)
+jws_application_set_should_exit_loop(JwsApplication *app, bool should_exit)
 {
 	g_assert(app);
 	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
@@ -289,7 +294,7 @@ void
 jws_application_stop_main_loop(JwsApplication *app)
 {
 	g_assert(app);
-	jws_application_set_should_exit_loop(app, TRUE);
+	jws_application_set_should_exit_loop(app, true);
 }
 
 void
@@ -320,7 +325,7 @@ jws_application_display_rotate_images(JwsApplication *app)
 {
 	g_assert(app);
 	JwsApplicationPrivate *priv = jws_application_get_instance_private(app);
-	jws_application_set_should_exit_loop(app, FALSE);
+	jws_application_set_should_exit_loop(app, false);
 	/* Loop forever until receiving a signal. */
 	while (!jws_application_get_should_exit_loop(app)) {
 		if (jws_info_get_randomize_order(priv->current_info))
@@ -416,7 +421,7 @@ jws_create_file_list_for_info(JwsInfo *info)
 	return file_list;
 }
 
-gchar *
+char *
 jws_get_default_config_file()
 {
 	gchar *config_file_path = NULL;
@@ -429,10 +434,10 @@ jws_get_default_config_file()
 	 * can be added later with a check to found_file.  For now, it's just a
 	 * complication.
 	 */
-	gboolean found_file = FALSE;
+	gboolean found_file = false;
 	if (g_file_query_exists(config_file, NULL)) {
 		config_file_path = g_file_get_path(config_file);
-		found_file = TRUE;
+		found_file = true;
 	}
 
 	if (!found_file) {
@@ -441,7 +446,7 @@ jws_get_default_config_file()
 		config_file = g_file_get_child(config_dir, "jws");
 		if (g_file_query_exists(config_file, NULL)) {
 			config_file_path = g_file_get_path(config_file);
-			found_file = TRUE;
+			found_file = true;
 		}
 	}
 	/* Add more statements here if desired. */
