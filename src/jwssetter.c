@@ -19,10 +19,11 @@
 
 #include "jwssetter.h"
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-gchar *
+char *
 jws_feh_string_for_mode(JwsWallpaperMode mode)
 {
 	gchar *mode_str = NULL;
@@ -50,18 +51,24 @@ jws_feh_string_for_mode(JwsWallpaperMode mode)
 	return mode_str;
 }
 
-gboolean
-jws_set_wallpaper_from_file(const char *path, JwsWallpaperMode mode)
+bool
+jws_set_wallpaper_from_file(const char *path, JwsWallpaperMode mode,
+	const char *background_color)
 {
-	gchar *mode_str = jws_feh_string_for_mode(mode);
+	// TODO: Escape strings to they can be used in shell safely to prevent
+	// injection attacks/weird user inputs.
+	char *mode_str = jws_feh_string_for_mode(mode);
 	g_assert(mode_str);
-	gchar *set_cmd = g_strconcat("feh ", mode_str, " \"", path, "\"",
-		NULL);
+	char *set_cmd;
+	if (background_color != NULL)
+		set_cmd = g_strdup_printf("feh %s --image-bg=%s \"%s\"",
+			mode_str, background_color, path);
+	else
+		set_cmd = g_strdup_printf("feh %s \"%s\"", mode_str, path);
+
 	g_free(mode_str);
-	/*
-	 * TODO: Determine if there is a different way this should be done,
-	 * such as with a glib call.
-	 */
+	// TODO: Determine if there is a different way this should be done,
+	// such as with a glib call.
 	int status = system(set_cmd);
 	g_free(set_cmd);
 	return status == 0;

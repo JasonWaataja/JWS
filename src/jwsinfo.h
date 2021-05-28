@@ -26,8 +26,8 @@
 #include "jwstime.h"
 
 #define JWS_TYPE_INFO (jws_info_get_type())
-#define JWS_INFO(obj) (G_TYPE_CHECK_INSTANCE_CAST((obj), JWS_TYPE_INFO,\
-		JwsInfo))
+#define JWS_INFO(obj)                                                          \
+	(G_TYPE_CHECK_INSTANCE_CAST((obj), JWS_TYPE_INFO, JwsInfo))
 
 /*
  * A JwsInfo represents the information in a JWS configuration file, namely how
@@ -112,6 +112,20 @@ jws_info_get_randomize_order(JwsInfo *info);
  */
 void
 jws_info_set_randomize_order(JwsInfo *info, gboolean randomize_order);
+
+/*
+ * Returns the background color to use if the wallpaper doesn't occupy the
+ * whole screen, or NULL. Free the result with g_free.
+ */
+char *
+jws_info_get_background_color(JwsInfo *info);
+
+/**
+ * Sets the background color to use if the wallpaper doesn't occupy the whole
+ * screen. If passed NULL, uses feh's default, which is black.
+ */
+void
+jws_info_set_background_color(JwsInfo *info, const char *background_color);
 
 /*
  * Returns the list of files for info. This should be treated as an

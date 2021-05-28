@@ -190,12 +190,11 @@ handle_local_options(GApplication *app, GVariantDict *options,
 		JwsTimeValue *rotate_time = jws_time_value_new_from_string(
 			as_cmd_options->rotate_time);
 		if (!rotate_time)
-			g_printerr(_("Error, invalid time format: \"%s\".\n"),
+			g_printerr("Error, invalid time format: \"%s\".\n",
 				as_cmd_options->rotate_time);
 		else if (jws_time_value_total_seconds(rotate_time) <= 0)
-			g_printerr(
-				_("Error, must use a time value greater than "
-				  "zero.\n"));
+			g_printerr("Error, must use a time value greater than "
+				   "zero.\n");
 		else
 			jws_info_set_rotate_time(priv->current_info,
 				rotate_time);
@@ -208,7 +207,7 @@ handle_local_options(GApplication *app, GVariantDict *options,
 		if (is_mode)
 			jws_info_set_mode(priv->current_info, mode);
 		else
-			g_printerr(_("Error, unknown mode \"%s\".\n"),
+			g_printerr("Error, unknown mode \"%s\".\n",
 				as_cmd_options->mode);
 	}
 	return -1;
@@ -308,7 +307,7 @@ jws_application_display_images(JwsApplication *app)
 	/*jws_application_set_file_list(app, file_list);*/
 	priv->file_list = g_list_concat(priv->file_list, file_list);
 	if (priv->file_list == NULL) {
-		g_printerr(_("Error: No images to display.\n"));
+		g_printerr("Error: No images to display.\n");
 		return;
 	}
 	if (jws_info_get_rotate_image(priv->current_info))
@@ -316,7 +315,8 @@ jws_application_display_images(JwsApplication *app)
 	else {
 		char *path = g_list_first(priv->file_list)->data;
 		jws_set_wallpaper_from_file(path,
-			jws_info_get_mode(priv->current_info));
+			jws_info_get_mode(priv->current_info),
+			jws_info_get_background_color(priv->current_info));
 	}
 }
 
@@ -336,7 +336,9 @@ jws_application_display_rotate_images(JwsApplication *app)
 			iter = g_list_next(iter)) {
 			char *path = iter->data;
 			jws_set_wallpaper_from_file(path,
-				jws_info_get_mode(priv->current_info));
+				jws_info_get_mode(priv->current_info),
+				jws_info_get_background_color(
+					priv->current_info));
 			JwsTimeValue *rotate_time =
 				jws_info_get_rotate_time(priv->current_info);
 			int rotate_seconds =
@@ -405,7 +407,7 @@ jws_add_path_to_list(GList *list, const char *path)
 		list = g_list_append(list, g_strdup(file_path));
 		g_free(file_path);
 	} else if (file_type == G_FILE_TYPE_UNKNOWN)
-		g_printerr(_("File does not exist: %s\n"), path);
+		g_printerr("File does not exist: %s\n", path);
 	g_object_unref(as_file);
 	return list;
 }

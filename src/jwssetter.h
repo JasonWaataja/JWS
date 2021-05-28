@@ -20,11 +20,13 @@
 #ifndef JWS_JWS_SETTER_H
 #define JWS_JWS_SETTER_H
 
+#include <stdbool.h>
+
 #include <glib.h>
 
 typedef enum _JwsWallpaperMode JwsWallpaperMode;
 
-/* Corresponds to feh's modes. */
+// Corresponds to feh's background modes.
 enum _JwsWallpaperMode {
 	JWS_WALLPAPER_MODE_FILL = 0,
 	JWS_WALLPAPER_MODE_CENTER,
@@ -35,18 +37,18 @@ enum _JwsWallpaperMode {
 
 #define JWS_DEFAULT_WALLPAPER_MODE JWS_WALLPAPER_MODE_FILL
 
-/*
- * Returns a new a newly allocated string representing mode in command line
- * argument form for feh, e.g. "--bg-fill". Free the return values with g_free.
- */
-gchar *
+// Returns a new a string representing mode in command line argument form for
+// feh, e.g. "--bg-fill". Free the return values with g_free.
+char *
 jws_feh_string_for_mode(JwsWallpaperMode mode);
 
-/*
- * Sets the current wallpaper to the file contained in path with the given
- * mode. Returns TRUE on success, false on failure.
- */
-gboolean
-jws_set_wallpaper_from_file(const char *path, JwsWallpaperMode mode);
+// Sets the current wallpaper to the file contained in path with the given
+// mode. In cases where the image doesn't occupy the entire screen,
+// background_color is used to fill in the empty space, if it's not NULl. It
+// should be a hex color starting with a "#" sign.  Returns true on success,
+// false on failure.
+bool
+jws_set_wallpaper_from_file(const char *path, JwsWallpaperMode mode,
+	const char *background_color);
 
 #endif /* JWS_JWS_SETTER_H */
