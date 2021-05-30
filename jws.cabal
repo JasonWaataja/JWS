@@ -23,6 +23,7 @@ executable jws
   build-depends:       base >=4.13 && <4.14,
                        yaml >= 0.11,
                        text >= 1.2,
-                       aeson >= 1.5
+                       aeson >= 1.5,
+                       vector >= 0.12
   hs-source-dirs: src
   default-language:    Haskell2010
