@@ -1,5 +1,7 @@
+-- | Main module for JWS.
 module Main where
 
+import qualified Control.Monad.Loops as Loops
 import qualified Control.Concurrent as Concurrent
 import qualified Control.Monad as M
 import qualified Data.List as L
@@ -13,9 +15,14 @@ import qualified System.IO as IO
 import qualified System.Process as P
 import qualified System.Random as Random
 
+-- | @'isImageFile' path@ returns whether @path@ represents an image file.
 isImageFile :: FilePath -> Bool
 isImageFile path = L.isSuffixOf "jpg" path || L.isSuffixOf "png" path
 
+-- | @'readImageFiles' path@ reads all image files at @path@ or any subdirectory
+-- recursively and returns a list of the results. The results are is if one
+-- walked the file tree going through the contents of each directory in
+-- alphabetical order.
 readImageFiles :: FilePath -> IO [FilePath]
 readImageFiles path =
   do
@@ -34,6 +41,9 @@ readImageFiles path =
             return (concat files)
           else return []
 
+-- | @'backgroundModeToFehArg' mode@ returns a string that may be passed as an
+-- option to @feh@ to control the mode used to display the background on the
+-- screen.
 backgroundModeToFehArg :: C.BackgroundMode -> String
 backgroundModeToFehArg mode =
   case mode of
@@ -43,6 +53,9 @@ backgroundModeToFehArg mode =
     C.BackgroundScale -> "--bg-scale"
     C.BackgroundTile -> "--bg-tile"
 
+-- | @'setBackground' path config@ sets the background to the image at @path@
+-- using the mode specified in @config@. Returns true on success and false on
+-- failure.
 setBackground :: FilePath -> C.Config -> IO Bool
 setBackground path config =
   do
@@ -58,10 +71,13 @@ setBackground path config =
     exitCode <- P.waitForProcess handle
     return (exitCode == Exit.ExitSuccess)
 
--- | Performs tilde expansion
+-- | @'expandPath' path@ performs shell globbing expansion on @path@ to expand
+-- @path@. If @path@ would expand to more than one path, returns one of them.
 expandPath :: String -> IO FilePath
 expandPath path = head <$> SE.glob path
 
+-- | @'makeBackgroundList' config@ returns the list of all images specified in
+-- the files and directories of @config@.
 makeBackgroundList :: C.Config -> IO [FilePath]
 makeBackgroundList config =
   do
@@ -69,10 +85,15 @@ makeBackgroundList config =
     allFiles <- mapM readImageFiles paths
     return (concat allFiles)
 
+-- | @'backgroundDelay' config@ pauses execution for the wait time specified in
+-- @config@.
 backgroundDelay :: C.Config -> IO ()
 backgroundDelay config =
   Concurrent.threadDelay $ 1000000 * fromIntegral (C.configSwitchTime config)
 
+-- | Shows all the backgrounds specified in the configuration in order, waiting
+-- between each one. This function never returns, after it's shown all
+-- backgrounds it starts over.
 showAllBackgrounds :: C.Config -> IO ()
 showAllBackgrounds config =
   M.forever $ do
@@ -84,6 +105,9 @@ showAllBackgrounds config =
       )
       backgrounds
 
+-- | Shows all backgrounds specified in the configuration in a randomized order,
+-- waiting between each one. This function never returns, it continues to show
+-- random backgrounds.
 showBackgroundsRandomized :: C.Config -> IO ()
 showBackgroundsRandomized config =
   M.forever $ do
@@ -93,26 +117,20 @@ showBackgroundsRandomized config =
         (index, _) = Random.randomR (0, len - 1) gen
         background = backgrounds !! index
      in do
-       setBackground background config
-       backgroundDelay config
+          setBackground background config
+          backgroundDelay config
 
--- TODO; Change this to firstM in the monad loops library.
-findM :: Monad m => (a -> m Bool) -> [a] -> m (Maybe a)
-findM pred [] = return Nothing
-findM pred (x : xs) =
-  do
-    isSatisfied <- pred x
-    if isSatisfied
-      then return (Just x)
-      else findM pred xs
-
+-- | An action that returns the configuration file to use if one could be found,
+-- or Nothing otherwise. Searches @$XDG_CONFIG_HOME/jws/config.yaml@ and
+-- @~/.jws.yaml@ in that order.
 getConfigPath :: IO (Maybe FilePath)
 getConfigPath =
   do
     xdgConfigPath <- Dir.getXdgDirectory Dir.XdgConfig "jws/config.yaml"
     homeConfigPath <- expandPath "~/.jws.yaml"
-    findM Dir.doesFileExist [xdgConfigPath, homeConfigPath]
+    Loops.firstM Dir.doesFileExist [xdgConfigPath, homeConfigPath]
 
+-- | Runs the main program with the given configuration.
 runWithConfig :: C.Config -> IO ()
 runWithConfig config
   | null (C.configFiles config) =
@@ -125,6 +143,7 @@ runWithConfig config
     setBackground (head $ C.configFiles config) config
     return ()
 
+-- | Executes JWS.
 main :: IO ()
 main =
   do

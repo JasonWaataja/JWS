@@ -29,6 +29,7 @@ executable jws
                        process,
                        HSH >= 2.1,
                        random,
-                       filepath
+                       filepath,
+                       monad-loops
   hs-source-dirs: src
   default-language:    Haskell2010
