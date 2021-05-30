@@ -30,7 +30,7 @@ readImageFiles path =
         if isDir
           then do
             contents <- Dir.listDirectory path
-            files <- mapM (readImageFiles . (path </>)) contents
+            files <- mapM (readImageFiles . (path </>)) (L.sort contents)
             return (concat files)
           else return []
 
@@ -69,6 +69,10 @@ makeBackgroundList config =
     allFiles <- mapM readImageFiles paths
     return (concat allFiles)
 
+backgroundDelay :: C.Config -> IO ()
+backgroundDelay config =
+  Concurrent.threadDelay $ 1000000 * fromIntegral (C.configSwitchTime config)
+
 showAllBackgrounds :: C.Config -> IO ()
 showAllBackgrounds config =
   M.forever $ do
@@ -76,7 +80,7 @@ showAllBackgrounds config =
     mapM_
       ( \background -> do
           setBackground background config
-          Concurrent.threadDelay $ 1000000 * fromIntegral (C.configSwitchTime config)
+          backgroundDelay config
       )
       backgrounds
 
@@ -88,8 +92,11 @@ showBackgroundsRandomized config =
     let len = length backgrounds
         (index, _) = Random.randomR (0, len - 1) gen
         background = backgrounds !! index
-     in setBackground background config
+     in do
+       setBackground background config
+       backgroundDelay config
 
+-- TODO; Change this to firstM in the monad loops library.
 findM :: Monad m => (a -> m Bool) -> [a] -> m (Maybe a)
 findM pred [] = return Nothing
 findM pred (x : xs) =
