@@ -89,7 +89,7 @@ makeBackgroundList config =
     return (concat allFiles)
 
 -- | @'setRandomBackground' config gen@ chooses a random background from config
--- and sets it as the background.
+-- and sets it as the background using the options in the configuration.
 setRandomBackground :: Random.RandomGen g => C.Config -> g -> IO g
 setRandomBackground config gen =
   do
@@ -167,6 +167,8 @@ runWithConfig config
     setBackground (head backgrounds) config
     return ()
 
+-- | Takes a configuration and returns a new configuration with the same values
+-- but with any provided arguments from the options applied.
 configWithOptions :: C.Config -> O.Options -> C.Config
 configWithOptions config options =
   C.Config
@@ -203,6 +205,4 @@ main =
           case parseResult of
             Left e -> Exit.die $ "error parsing config file: " ++ Y.prettyPrintParseException e
             Right config -> return config
-      print config
-      print options
       runWithConfig $ configWithOptions config options
