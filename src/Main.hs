@@ -1,13 +1,16 @@
 -- | Main module for JWS.
 module Main where
 
-import qualified Control.Monad.Loops as Loops
+import Control.Applicative ((<|>))
 import qualified Control.Concurrent as Concurrent
 import qualified Control.Monad as M
+import qualified Control.Monad.Loops as Loops
 import qualified Data.List as L
+import qualified Data.Maybe as Maybe
 import qualified Data.Yaml as Y
 import qualified HSH.ShellEquivs as SE
 import qualified JWS.Config as C
+import qualified JWS.Options as O
 import qualified System.Directory as Dir
 import qualified System.Exit as Exit
 import System.FilePath ((</>))
@@ -76,7 +79,7 @@ setBackground path config =
 expandPath :: String -> IO FilePath
 expandPath path = head <$> SE.glob path
 
--- | @'makeBackgroundList' config@ returns the list of all images specified in
+-- | @'fakeBackgroundList' config@ returns the list of all images specified in
 -- the files and directories of @config@.
 makeBackgroundList :: C.Config -> IO [FilePath]
 makeBackgroundList config =
@@ -84,6 +87,19 @@ makeBackgroundList config =
     paths <- mapM expandPath (C.configFiles config)
     allFiles <- mapM readImageFiles paths
     return (concat allFiles)
+
+-- | @'setRandomBackground' config gen@ chooses a random background from config
+-- and sets it as the background.
+setRandomBackground :: Random.RandomGen g => C.Config -> g -> IO g
+setRandomBackground config gen =
+  do
+    backgrounds <- makeBackgroundList config
+    let len = length backgrounds
+        (index, newGen) = Random.randomR (0, len - 1) gen
+        background = backgrounds !! index
+     in do
+          setBackground background config
+          return newGen
 
 -- | @'backgroundDelay' config@ pauses execution for the wait time specified in
 -- @config@.
@@ -110,25 +126,28 @@ showAllBackgrounds config =
 -- random backgrounds.
 showBackgroundsRandomized :: C.Config -> IO ()
 showBackgroundsRandomized config =
-  M.forever $ do
-    gen <- Random.newStdGen
-    backgrounds <- makeBackgroundList config
-    let len = length backgrounds
-        (index, _) = Random.randomR (0, len - 1) gen
-        background = backgrounds !! index
-     in do
-          setBackground background config
-          backgroundDelay config
+  do
+    gen <- Random.getStdGen
+    helper config gen
+  where
+    helper :: Random.RandomGen g => C.Config -> g -> IO ()
+    helper config gen =
+      do
+        gen <- setRandomBackground config gen
+        backgroundDelay config
+        helper config gen
 
 -- | An action that returns the configuration file to use if one could be found,
 -- or Nothing otherwise. Searches @$XDG_CONFIG_HOME/jws/config.yaml@ and
 -- @~/.jws.yaml@ in that order.
-getConfigPath :: IO (Maybe FilePath)
-getConfigPath =
-  do
-    xdgConfigPath <- Dir.getXdgDirectory Dir.XdgConfig "jws/config.yaml"
-    homeConfigPath <- expandPath "~/.jws.yaml"
-    Loops.firstM Dir.doesFileExist [xdgConfigPath, homeConfigPath]
+getConfigPath :: O.Options -> IO (Maybe FilePath)
+getConfigPath options =
+  case O.optionsConfigFile options of
+    Just file -> return (Just file)
+    Nothing -> do
+      xdgConfigPath <- Dir.getXdgDirectory Dir.XdgConfig "jws/config.yaml"
+      homeConfigPath <- expandPath "~/.jws.yaml"
+      Loops.firstM Dir.doesFileExist [xdgConfigPath, homeConfigPath]
 
 -- | Runs the main program with the given configuration.
 runWithConfig :: C.Config -> IO ()
@@ -139,19 +158,55 @@ runWithConfig config
     if C.configRandomize config
       then showBackgroundsRandomized config
       else showAllBackgrounds config
-  | otherwise = do
-    setBackground (head $ C.configFiles config) config
+  | C.configRandomize config = do
+    gen <- Random.getStdGen
+    setRandomBackground config gen
     return ()
+  | otherwise = do
+    backgrounds <- makeBackgroundList config
+    setBackground (head backgrounds) config
+    return ()
+
+configWithOptions :: C.Config -> O.Options -> C.Config
+configWithOptions config options =
+  C.Config
+    { C.configRotate =
+        Maybe.fromMaybe
+          (C.configRotate config)
+          (O.optionsRotate options <|> fmap not (O.optionsNoRotate options)),
+      C.configRandomize =
+        Maybe.fromMaybe
+          (C.configRandomize config)
+          ( O.optionsRandomize options
+              <|> fmap not (O.optionsNoRandomize options)
+          ),
+      C.configSwitchTime =
+        Maybe.fromMaybe
+          (C.configSwitchTime config)
+          (O.optionsTime options),
+      C.configBackgroundMode =
+        Maybe.fromMaybe (C.configBackgroundMode config) (O.optionsMode options),
+      C.configBackgroundColor =
+        Maybe.fromMaybe
+          (C.configBackgroundColor config)
+          (O.optionsBackgroundColor options),
+      C.configFiles = C.configFiles config ++ O.optionsFiles options
+    }
 
 -- | Executes JWS.
 main :: IO ()
 main =
   do
-    configPath <- getConfigPath
-    case configPath of
-      Nothing -> Exit.die "can't open configuration file"
-      Just path -> do
-        parseResult <- C.configFromFile path
-        case parseResult of
-          Left e -> Exit.die $ Y.prettyPrintParseException e
-          Right config -> runWithConfig config
+    options <- O.parseOptions
+    configPath <- getConfigPath options
+    do
+      config <- case configPath of
+        Nothing -> return C.defaultConfig
+        Just path -> do
+          parseResult <- C.configFromFile path
+          case parseResult of
+            Left e -> Exit.die $ "error parsing config file: " ++ Y.prettyPrintParseException e
+            Right config -> return config
+      print config
+      print options
+      runWithConfig $ configWithOptions config options

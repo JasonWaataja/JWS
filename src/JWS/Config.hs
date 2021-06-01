@@ -3,7 +3,9 @@
 -- | Configuration for JWS.
 module JWS.Config
   ( BackgroundMode (..),
+    backgroundModeFromString,
     Config (..),
+    defaultConfig,
     configFromFile,
   )
 where
@@ -58,14 +60,27 @@ data Config = Config
   }
   deriving (Eq, Show)
 
+defaultConfig :: Config
+defaultConfig =
+  Config
+    { configRotate = False,
+      configRandomize = False,
+      configSwitchTime = 600,
+      configBackgroundMode = BackgroundFill,
+      configBackgroundColor = "0x000000",
+      configFiles = []
+    }
+
 instance Y.FromJSON Config where
   parseJSON =
     Y.withObject "Config" $ \v ->
-      Config <$> (v .:? "rotate" .!= False) <*> (v .:? "randomize" .!= False)
-        <*> (v .:? "switch_time" .!= 600)
-        <*> (v .:? "background_mode" .!= BackgroundFill)
-        <*> (v .:? "background_color" .!= "0x000000")
-        <*> (v .:? "files" .!= [])
+      Config
+        <$> (v .:? "rotate" .!= configRotate defaultConfig)
+        <*> (v .:? "randomize" .!= configRandomize defaultConfig)
+        <*> (v .:? "switch_time" .!= configSwitchTime defaultConfig)
+        <*> (v .:? "background_mode" .!= configBackgroundMode defaultConfig)
+        <*> (v .:? "background_color" .!= configBackgroundColor defaultConfig)
+        <*> (v .:? "files" .!= configFiles defaultConfig)
 
 -- | @'configFromFile' path@ reads the file at @path@ and returns the
 -- stored configuration file, or a YAML exception.
