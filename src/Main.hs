@@ -174,10 +174,10 @@ configWithOptions config options =
   C.Config
     { C.configRotate =
         (C.configRotate config || O.optionsRotate options)
-          && not (O.optionsRotate options),
+          && not (O.optionsNoRotate options),
       C.configRandomize =
         (C.configRandomize config || O.optionsRandomize options)
-          && not (O.optionsRandomize options),
+          && not (O.optionsNoRandomize options),
       C.configSwitchTime =
         Maybe.fromMaybe
           (C.configSwitchTime config)
