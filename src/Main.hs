@@ -171,15 +171,11 @@ configWithOptions :: C.Config -> O.Options -> C.Config
 configWithOptions config options =
   C.Config
     { C.configRotate =
-        Maybe.fromMaybe
-          (C.configRotate config)
-          (O.optionsRotate options <|> fmap not (O.optionsNoRotate options)),
+        (C.configRotate config || O.optionsRotate options)
+          && not (O.optionsRotate options),
       C.configRandomize =
-        Maybe.fromMaybe
-          (C.configRandomize config)
-          ( O.optionsRandomize options
-              <|> fmap not (O.optionsNoRandomize options)
-          ),
+        (C.configRandomize config || O.optionsRandomize options)
+          && not (O.optionsRandomize options),
       C.configSwitchTime =
         Maybe.fromMaybe
           (C.configSwitchTime config)

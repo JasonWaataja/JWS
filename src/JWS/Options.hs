@@ -10,10 +10,10 @@ import qualified Options.Applicative as O
 
 data Options = Options
   { optionsConfigFile :: !(Maybe FilePath),
-    optionsRotate :: !(Maybe Bool),
-    optionsNoRotate :: !(Maybe Bool),
-    optionsRandomize :: !(Maybe Bool),
-    optionsNoRandomize :: !(Maybe Bool),
+    optionsRotate :: !Bool,
+    optionsNoRotate :: !Bool,
+    optionsRandomize :: !Bool,
+    optionsNoRandomize :: !Bool,
     optionsTime :: !(Maybe Integer),
     optionsMode :: !(Maybe C.BackgroundMode),
     optionsBackgroundColor :: !(Maybe String),
@@ -34,31 +34,23 @@ jwsParser =
               <> O.help "Specify configuration file"
           )
       )
-    <*> O.optional
-      ( O.switch
-          ( O.long "rotate-image"
-              <> O.short 'r'
-              <> O.help "Cycle through images"
-          )
+    <*> O.switch
+      ( O.long "rotate-image"
+          <> O.short 'r'
+          <> O.help "Cycle through images"
       )
-    <*> O.optional
-      ( O.switch
-          ( O.long "no-rotate-image"
-              <> O.help "Don't cycle through images"
-          )
+    <*> O.switch
+      ( O.long "no-rotate-image"
+          <> O.help "Don't cycle through images"
       )
-    <*> O.optional
-      ( O.switch
-          ( O.long "randomize-order"
-              <> O.short 's'
-              <> O.help "Display backgrounds in a random order"
-          )
+    <*> O.switch
+      ( O.long "randomize-order"
+          <> O.short 's'
+          <> O.help "Display backgrounds in a random order"
       )
-    <*> O.optional
-      ( O.switch
-          ( O.long "no-randomize-order"
-              <> O.help "Don't display backgrounds in a random order"
-          )
+    <*> O.switch
+      ( O.long "no-randomize-order"
+          <> O.help "Don't display backgrounds in a random order"
       )
     <*> O.optional
       ( O.option
