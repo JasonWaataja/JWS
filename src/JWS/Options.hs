@@ -9,8 +9,10 @@ import qualified JWS.Config as C
 import Options.Applicative ((<|>))
 import qualified Options.Applicative as O
 
-data Options = Run RunOptions | Stop | Restart
+-- | Options for JWS.
+data Options = Run RunOptions | Stop | Restart deriving (Eq, Show)
 
+-- | Options for a normal run of JWS.
 data RunOptions = RunOptions
   { optionsConfigFile :: !(Maybe FilePath),
     optionsRotate :: !Bool,
@@ -24,6 +26,7 @@ data RunOptions = RunOptions
   }
   deriving (Eq, Show)
 
+-- | A ReadM instance for BackgroundMode so that a BackgroundMode can be parsed.
 parseBackgroundMode :: O.ReadM C.BackgroundMode
 parseBackgroundMode = O.maybeReader C.backgroundModeFromString
 
@@ -88,21 +91,21 @@ jwsParser =
 jwsParserInfo :: O.ParserInfo Options
 jwsParserInfo =
   O.info
-    ( (O.helper <*> jwsParser)
-        <|> O.subparser
-          ( O.command
-              "stop"
+    ( O.subparser
+        ( O.command
+            "stop"
+            ( O.info
+                (pure Stop)
+                (O.progDesc "Stop a running instance")
+            )
+            <> O.command
+              "restart"
               ( O.info
-                  (pure Stop)
-                  (O.progDesc "Stop a running instance")
+                  (pure Restart)
+                  (O.progDesc "Restart JWS")
               )
-              <> O.command
-                "restart"
-                ( O.info
-                    (pure Restart)
-                    (O.progDesc "Restart JWS")
-                )
-          )
+        )
+        <|> (O.helper <*> jwsParser)
     )
     ( O.fullDesc
         <> O.progDesc
