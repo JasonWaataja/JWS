@@ -12,7 +12,7 @@ where
 
 import qualified Data.Aeson.Types as ATypes
 import qualified Data.Text as T
-import Data.Yaml ((.!=), (.:), (.:?))
+import Data.Yaml ((.!=), (.:?))
 import qualified Data.Yaml as Y
 
 -- | The mode used to decide how an image is stretched to display on a screen.

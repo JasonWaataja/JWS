@@ -1,10 +1,12 @@
 -- | Main module for JWS.
 module Main where
 
-import Control.Applicative ((<|>))
 import qualified Control.Concurrent as Concurrent
-import qualified Control.Monad as M
+import qualified Control.Concurrent.Suspend as Suspend
+import qualified Control.Concurrent.Timer as Timer
 import qualified Control.Monad.Loops as Loops
+import qualified DBus as DB
+import qualified DBus.Client as DBClient
 import qualified Data.List as L
 import qualified Data.Maybe as Maybe
 import qualified Data.Yaml as Y
@@ -14,7 +16,6 @@ import qualified JWS.Options as O
 import qualified System.Directory as Dir
 import qualified System.Exit as Exit
 import System.FilePath ((</>))
-import qualified System.IO as IO
 import qualified System.Process as P
 import qualified System.Random as Random
 
@@ -98,7 +99,7 @@ setRandomBackground config gen =
         (index, newGen) = Random.randomR (0, len - 1) gen
         background = backgrounds !! index
      in do
-          setBackground background config
+          _ <- setBackground background config
           return newGen
 
 -- | @'backgroundDelay' config@ pauses execution for the wait time specified in
@@ -107,19 +108,59 @@ backgroundDelay :: C.Config -> IO ()
 backgroundDelay config =
   Concurrent.threadDelay $ 1000000 * fromIntegral (C.configSwitchTime config)
 
--- | Shows all the backgrounds specified in the configuration in order, waiting
--- between each one. This function never returns, after it's shown all
--- backgrounds it starts over.
-showAllBackgrounds :: C.Config -> IO ()
-showAllBackgrounds config =
-  M.forever $ do
-    backgrounds <- makeBackgroundList config
-    mapM_
-      ( \background -> do
-          setBackground background config
-          backgroundDelay config
-      )
-      backgrounds
+data Message = Timer | Stop | Restart
+
+-- -- | Shows all the backgrounds specified in the configuration in order, waiting
+-- -- between each one. This function never returns, after it's shown all
+-- -- backgrounds it starts over.
+-- showAllBackgrounds :: C.Config -> IO ()
+-- showAllBackgrounds config =
+-- M.forever $ do
+-- backgrounds <- makeBackgroundList config
+-- mapM_
+-- ( \background -> do
+-- setBackground background config
+-- backgroundDelay config
+-- )
+-- backgrounds
+
+openClient :: IO (Maybe DBClient.Client)
+openClient = do
+  client <- DBClient.connectSession
+  nameResult <- DBClient.requestName client (DB.busName_ "com.github.JWS") [DBClient.nameDoNotQueue]
+  case nameResult of
+    DBClient.NamePrimaryOwner -> return (Just client)
+    DBClient.NameExists -> do
+      putStrLn "JWS already running"
+      DBClient.disconnect client
+      return Nothing
+    _ -> do
+      DBClient.disconnect client
+      return Nothing
+
+showAllBackgrounds :: C.Config -> DBClient.Client -> Concurrent.Chan Message -> IO ()
+showAllBackgrounds config client messageChan = do
+  bgList <- makeBackgroundList config
+  timer <- Timer.repeatedTimer (Concurrent.writeChan messageChan Timer) (Suspend.sDelay $ fromIntegral $ C.configSwitchTime config)
+  loop (cycle bgList) timer
+  where
+    loop :: [FilePath] -> Timer.TimerIO -> IO ()
+    loop (background : restBackgrounds) timer = do
+      _ <- setBackground background config
+      message <- Concurrent.readChan messageChan
+      case message of
+        Timer -> loop restBackgrounds timer
+        Stop -> do
+          cleanup timer
+          return ()
+        Restart -> do
+          cleanup timer
+          main
+    loop _ _ = do error "Empty background list"
+    cleanup :: Timer.TimerIO -> IO ()
+    cleanup timer = do
+      Timer.stopTimer timer
+      DBClient.disconnect client
 
 -- | Shows all backgrounds specified in the configuration in a randomized order,
 -- waiting between each one. This function never returns, it continues to show
@@ -128,19 +169,19 @@ showBackgroundsRandomized :: C.Config -> IO ()
 showBackgroundsRandomized config =
   do
     gen <- Random.getStdGen
-    helper config gen
+    helper gen
   where
-    helper :: Random.RandomGen g => C.Config -> g -> IO ()
-    helper config gen =
+    helper :: Random.RandomGen g => g -> IO ()
+    helper gen =
       do
-        gen <- setRandomBackground config gen
+        gen' <- setRandomBackground config gen
         backgroundDelay config
-        helper config gen
+        helper gen'
 
 -- | An action that returns the configuration file to use if one could be found,
 -- or Nothing otherwise. Searches @$XDG_CONFIG_HOME/jws/config.yaml@ and
 -- @~/.jws.yaml@ in that order.
-getConfigPath :: O.Options -> IO (Maybe FilePath)
+getConfigPath :: O.RunOptions -> IO (Maybe FilePath)
 getConfigPath options =
   case O.optionsConfigFile options of
     Just file -> return (Just file)
@@ -157,19 +198,24 @@ runWithConfig config
   | C.configRotate config =
     if C.configRandomize config
       then showBackgroundsRandomized config
-      else showAllBackgrounds config
+      else do
+        client <- openClient
+        messageChan <- Concurrent.newChan
+        case client of
+          Just c -> showAllBackgrounds config c messageChan
+          Nothing -> return ()
   | C.configRandomize config = do
     gen <- Random.getStdGen
-    setRandomBackground config gen
+    _ <- setRandomBackground config gen
     return ()
   | otherwise = do
     backgrounds <- makeBackgroundList config
-    setBackground (head backgrounds) config
+    _ <- setBackground (head backgrounds) config
     return ()
 
 -- | Takes a configuration and returns a new configuration with the same values
 -- but with any provided arguments from the options applied.
-configWithOptions :: C.Config -> O.Options -> C.Config
+configWithOptions :: C.Config -> O.RunOptions -> C.Config
 configWithOptions config options =
   C.Config
     { C.configRotate =
@@ -191,18 +237,25 @@ configWithOptions config options =
       C.configFiles = C.configFiles config ++ O.optionsFiles options
     }
 
+run :: O.RunOptions -> IO ()
+run options = do
+  configPath <- getConfigPath options
+  do
+    config <- case configPath of
+      Nothing -> return C.defaultConfig
+      Just path -> do
+        parseResult <- C.configFromFile path
+        case parseResult of
+          Left e ->
+            Exit.die $
+              "error parsing config file: " ++ Y.prettyPrintParseException e
+          Right config -> return config
+    runWithConfig $ configWithOptions config options
+
 -- | Executes JWS.
 main :: IO ()
-main =
-  do
-    options <- O.parseOptions
-    configPath <- getConfigPath options
-    do
-      config <- case configPath of
-        Nothing -> return C.defaultConfig
-        Just path -> do
-          parseResult <- C.configFromFile path
-          case parseResult of
-            Left e -> Exit.die $ "error parsing config file: " ++ Y.prettyPrintParseException e
-            Right config -> return config
-      runWithConfig $ configWithOptions config options
+main = do
+  options <- O.parseOptions
+  case options of
+    O.Run runOpts -> run runOpts
+    _ -> return ()
