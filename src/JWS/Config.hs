@@ -25,6 +25,9 @@ data BackgroundMode
   | BackgroundTile
   deriving (Eq, Show)
 
+-- Parses a simple background mode String that can be "fill", "center", "max",
+-- "scale", or "tile". Returns the background mode if the input matched one of
+-- these and Nothing otherwise.
 backgroundModeFromString :: String -> Maybe BackgroundMode
 backgroundModeFromString s
   | s == "fill" = Just BackgroundFill
@@ -60,6 +63,7 @@ data Config = Config
   }
   deriving (Eq, Show)
 
+-- | The default configuration for JWS.
 defaultConfig :: Config
 defaultConfig =
   Config

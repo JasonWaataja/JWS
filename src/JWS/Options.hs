@@ -1,3 +1,4 @@
+-- | Command line arguments for JWS.
 module JWS.Options
   ( Options (..),
     RunOptions (..),
@@ -30,6 +31,7 @@ data RunOptions = RunOptions
 parseBackgroundMode :: O.ReadM C.BackgroundMode
 parseBackgroundMode = O.maybeReader C.backgroundModeFromString
 
+-- | Parser for main program options.
 jwsParser :: O.Parser Options
 jwsParser =
   Run
@@ -88,6 +90,7 @@ jwsParser =
             <*> O.many (O.argument O.str (O.metavar "BACKGROUND_FILES..."))
         )
 
+-- | Parser info for JWS.
 jwsParserInfo :: O.ParserInfo Options
 jwsParserInfo =
   O.info
@@ -117,5 +120,7 @@ jwsParserInfo =
         <> O.header "jws - A wallpaper setter for minimalist window managers"
     )
 
+-- | Reads the command line arguments passed to JWS and parses them into
+-- options.
 parseOptions :: IO Options
 parseOptions = O.execParser jwsParserInfo
