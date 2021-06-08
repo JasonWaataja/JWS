@@ -147,42 +147,52 @@ showAllBackgrounds :: C.Config -> DBClient.Client -> Concurrent.Chan Message -> 
 showAllBackgrounds config client messageChan = do
   bgList <- makeBackgroundList config
   exportMethods client messageChan
-  timer <- Timer.repeatedTimer (Concurrent.writeChan messageChan Timer) (Suspend.sDelay $ fromIntegral $ C.configSwitchTime config)
-  loop (cycle bgList) timer
+  timer <-
+    Timer.repeatedTimer
+      (Concurrent.writeChan messageChan Timer)
+      (Suspend.sDelay $ fromIntegral $ C.configSwitchTime config)
+  lastMessage <- loop (cycle bgList) timer
+  Timer.stopTimer timer
+  DBClient.disconnect client
+  case lastMessage of
+    Timer -> return ()
+    Stop -> return ()
+    Restart -> main
   where
-    loop :: [FilePath] -> Timer.TimerIO -> IO ()
+    loop :: [FilePath] -> Timer.TimerIO -> IO Message
     loop (background : restBackgrounds) timer = do
       _ <- setBackground background config
       message <- Concurrent.readChan messageChan
       case message of
         Timer -> loop restBackgrounds timer
-        Stop -> do
-          cleanup timer
-          return ()
-        Restart -> do
-          cleanup timer
-          main
-    loop _ _ = return (error "empty background list")
-    cleanup :: Timer.TimerIO -> IO ()
-    cleanup timer = do
-      Timer.stopTimer timer
-      DBClient.disconnect client
+        Stop -> return message
+        Restart -> return message
+    loop [] _ = return (error "empty background list")
 
--- | Shows all backgrounds specified in the configuration in a randomized order,
--- waiting between each one. This function never returns, it continues to show
--- random backgrounds.
-showBackgroundsRandomized :: C.Config -> IO ()
-showBackgroundsRandomized config =
-  do
-    gen <- Random.getStdGen
-    helper gen
+showBackgroundsRandomized :: C.Config -> DBClient.Client -> Concurrent.Chan Message -> IO ()
+showBackgroundsRandomized config client messageChan = do
+  exportMethods client messageChan
+  gen <- Random.newStdGen
+  timer <-
+    Timer.repeatedTimer
+      (Concurrent.writeChan messageChan Timer)
+      (Suspend.sDelay $ fromIntegral $ C.configSwitchTime config)
+  lastMessage <- loop timer gen
+  Timer.stopTimer timer
+  DBClient.disconnect client
+  case lastMessage of
+    Timer -> return ()
+    Stop -> return ()
+    Restart -> main
   where
-    helper :: Random.RandomGen g => g -> IO ()
-    helper gen =
-      do
-        gen' <- setRandomBackground config gen
-        backgroundDelay config
-        helper gen'
+    loop :: Random.RandomGen g => Timer.TimerIO -> g -> IO Message
+    loop timer gen = do
+      gen' <- setRandomBackground config gen
+      message <- Concurrent.readChan messageChan
+      case message of
+        Timer -> loop timer gen'
+        Stop -> return message
+        Restart -> return message
 
 -- | An action that returns the configuration file to use if one could be found,
 -- or Nothing otherwise. Searches @$XDG_CONFIG_HOME/jws/config.yaml@ and
@@ -201,15 +211,15 @@ runWithConfig :: C.Config -> IO ()
 runWithConfig config
   | null (C.configFiles config) =
     Exit.die "no wallpapers listed in \"files\" in configuration"
-  | C.configRotate config =
-    if C.configRandomize config
-      then showBackgroundsRandomized config
-      else do
-        client <- openClient
-        messageChan <- Concurrent.newChan
-        case client of
-          Just c -> showAllBackgrounds config c messageChan
-          Nothing -> return ()
+  | C.configRotate config = do
+    client <- openClient
+    messageChan <- Concurrent.newChan
+    case client of
+      Nothing -> return ()
+      Just c ->
+        if C.configRandomize config
+          then showBackgroundsRandomized config c messageChan
+          else showAllBackgrounds config c messageChan
   | C.configRandomize config = do
     gen <- Random.getStdGen
     _ <- setRandomBackground config gen
