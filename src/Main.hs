@@ -285,7 +285,6 @@ runRestart = do
 main :: IO ()
 main = do
   options <- O.parseOptions
-  print options
   case options of
     O.Run runOpts -> run runOpts
     O.Stop -> runStop
