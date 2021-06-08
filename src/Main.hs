@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- | Main module for JWS.
 module Main where
 
@@ -96,11 +98,11 @@ setRandomBackground config gen =
   do
     backgrounds <- makeBackgroundList config
     let len = length backgrounds
-        (index, newGen) = Random.randomR (0, len - 1) gen
+        (index, gen') = Random.randomR (0, len - 1) gen
         background = backgrounds !! index
      in do
           _ <- setBackground background config
-          return newGen
+          return gen'
 
 -- | @'backgroundDelay' config@ pauses execution for the wait time specified in
 -- @config@.
@@ -108,26 +110,29 @@ backgroundDelay :: C.Config -> IO ()
 backgroundDelay config =
   Concurrent.threadDelay $ 1000000 * fromIntegral (C.configSwitchTime config)
 
-data Message = Timer | Stop | Restart
+exportMethods :: DBClient.Client -> Concurrent.Chan Message -> IO ()
+exportMethods client messageChan =
+  DBClient.export
+    client
+    "/com/github/JWS/app"
+    DBClient.defaultInterface
+      { DBClient.interfaceName = "com.github.JWS",
+        DBClient.interfaceMethods =
+          [ DBClient.autoMethod "Stop" (Concurrent.writeChan messageChan Stop),
+            DBClient.autoMethod "Restart" (Concurrent.writeChan messageChan Restart)
+          ]
+      }
 
--- -- | Shows all the backgrounds specified in the configuration in order, waiting
--- -- between each one. This function never returns, after it's shown all
--- -- backgrounds it starts over.
--- showAllBackgrounds :: C.Config -> IO ()
--- showAllBackgrounds config =
--- M.forever $ do
--- backgrounds <- makeBackgroundList config
--- mapM_
--- ( \background -> do
--- setBackground background config
--- backgroundDelay config
--- )
--- backgrounds
+data Message = Timer | Stop | Restart
 
 openClient :: IO (Maybe DBClient.Client)
 openClient = do
   client <- DBClient.connectSession
-  nameResult <- DBClient.requestName client (DB.busName_ "com.github.JWS") [DBClient.nameDoNotQueue]
+  nameResult <-
+    DBClient.requestName
+      client
+      "com.github.JWS"
+      [DBClient.nameDoNotQueue]
   case nameResult of
     DBClient.NamePrimaryOwner -> return (Just client)
     DBClient.NameExists -> do
@@ -141,6 +146,7 @@ openClient = do
 showAllBackgrounds :: C.Config -> DBClient.Client -> Concurrent.Chan Message -> IO ()
 showAllBackgrounds config client messageChan = do
   bgList <- makeBackgroundList config
+  exportMethods client messageChan
   timer <- Timer.repeatedTimer (Concurrent.writeChan messageChan Timer) (Suspend.sDelay $ fromIntegral $ C.configSwitchTime config)
   loop (cycle bgList) timer
   where
@@ -156,7 +162,7 @@ showAllBackgrounds config client messageChan = do
         Restart -> do
           cleanup timer
           main
-    loop _ _ = do error "Empty background list"
+    loop _ _ = return (error "empty background list")
     cleanup :: Timer.TimerIO -> IO ()
     cleanup timer = do
       Timer.stopTimer timer
@@ -237,6 +243,7 @@ configWithOptions config options =
       C.configFiles = C.configFiles config ++ O.optionsFiles options
     }
 
+-- | Runs JWS in normal mode to display one or more backgrounds.
 run :: O.RunOptions -> IO ()
 run options = do
   configPath <- getConfigPath options
@@ -252,10 +259,34 @@ run options = do
           Right config -> return config
     runWithConfig $ configWithOptions config options
 
+-- | Asks the running instance of JWS to stop execution.
+runStop :: IO ()
+runStop = do
+  client <- DBClient.connectSession
+  reply <-
+    DBClient.call
+      client
+      (DB.methodCall "/com/github/JWS/app" "com.github.JWS" "Stop")
+        { DB.methodCallDestination = Just "com.github.JWS"
+        }
+  print reply
+
+-- | Asks the running instance of JWS to restart.
+runRestart :: IO ()
+runRestart = do
+  client <- DBClient.connectSession
+  DBClient.callNoReply
+    client
+    (DB.methodCall "/com/github/JWS/app" "com.github.JWS" "Restart")
+      { DB.methodCallDestination = Just "com.github.JWS"
+      }
+
 -- | Executes JWS.
 main :: IO ()
 main = do
   options <- O.parseOptions
+  print options
   case options of
     O.Run runOpts -> run runOpts
-    _ -> return ()
+    O.Stop -> runStop
+    O.Restart -> runRestart
