@@ -125,6 +125,9 @@ exportMethods client messageChan =
 
 data Message = Timer | Stop | Restart
 
+-- | Attempts to open a unique DBus connection with a unique name. Returns the
+-- connection on success and Nothing on failure, printing out a message of the
+-- name was already in use.
 openClient :: IO (Maybe DBClient.Client)
 openClient = do
   client <- DBClient.connectSession
@@ -143,6 +146,10 @@ openClient = do
       DBClient.disconnect client
       return Nothing
 
+-- | Shows all backgrounds specified in the configuration on loop. When all
+-- backgrounds have been displayed, restarts from the beginning. If another
+-- instance os JWS requests the main instance to stop, then closes the given
+-- client.
 showAllBackgrounds :: C.Config -> DBClient.Client -> Concurrent.Chan Message -> IO ()
 showAllBackgrounds config client messageChan = do
   bgList <- makeBackgroundList config
@@ -169,6 +176,9 @@ showAllBackgrounds config client messageChan = do
         Restart -> return message
     loop [] _ = return (error "empty background list")
 
+-- Shows randomized backgrounds specified in the configuration on loop. If
+-- another instance os JWS requests the main instance to stop, then closes the
+-- given client.
 showBackgroundsRandomized :: C.Config -> DBClient.Client -> Concurrent.Chan Message -> IO ()
 showBackgroundsRandomized config client messageChan = do
   exportMethods client messageChan
