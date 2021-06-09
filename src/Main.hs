@@ -106,12 +106,6 @@ setRandomBackground config gen =
           _ <- setBackground background config
           return gen'
 
--- | @'backgroundDelay' config@ pauses execution for the wait time specified in
--- @config@.
-backgroundDelay :: C.Config -> IO ()
-backgroundDelay config =
-  Concurrent.threadDelay $ 1000000 * fromIntegral (C.configSwitchTime config)
-
 dbusBusName :: DB.BusName
 dbusBusName = "com.github.JWS"
 
