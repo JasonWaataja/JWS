@@ -6,6 +6,7 @@ module Main where
 import qualified Control.Concurrent as Concurrent
 import qualified Control.Concurrent.Suspend as Suspend
 import qualified Control.Concurrent.Timer as Timer
+import qualified Control.Exception as E
 import qualified Control.Monad.Loops as Loops
 import qualified DBus as DB
 import qualified DBus.Client as DBClient
@@ -18,6 +19,7 @@ import qualified JWS.Options as O
 import qualified System.Directory as Dir
 import qualified System.Exit as Exit
 import System.FilePath ((</>))
+import qualified System.IO as IO
 import qualified System.Process as P
 import qualified System.Random as Random
 
@@ -110,16 +112,35 @@ backgroundDelay :: C.Config -> IO ()
 backgroundDelay config =
   Concurrent.threadDelay $ 1000000 * fromIntegral (C.configSwitchTime config)
 
+dbusBusName :: DB.BusName
+dbusBusName = "com.github.JWS"
+
+dbusObjectPath :: DB.ObjectPath
+dbusObjectPath = "/com/github/JWS/app"
+
+dbusInterfaceName :: DB.InterfaceName
+dbusInterfaceName = "com.github.JWS"
+
+dbusStopMethod :: DB.MemberName
+dbusStopMethod = "Stop"
+
+dbusRestartMethod :: DB.MemberName
+dbusRestartMethod = "Restart"
+
 exportMethods :: DBClient.Client -> Concurrent.Chan Message -> IO ()
 exportMethods client messageChan =
   DBClient.export
     client
-    "/com/github/JWS/app"
+    dbusObjectPath
     DBClient.defaultInterface
-      { DBClient.interfaceName = "com.github.JWS",
+      { DBClient.interfaceName = dbusInterfaceName,
         DBClient.interfaceMethods =
-          [ DBClient.autoMethod "Stop" (Concurrent.writeChan messageChan Stop),
-            DBClient.autoMethod "Restart" (Concurrent.writeChan messageChan Restart)
+          [ DBClient.autoMethod
+              dbusStopMethod
+              (Concurrent.writeChan messageChan Stop),
+            DBClient.autoMethod
+              dbusRestartMethod
+              (Concurrent.writeChan messageChan Restart)
           ]
       }
 
@@ -134,7 +155,7 @@ openClient = do
   nameResult <-
     DBClient.requestName
       client
-      "com.github.JWS"
+      dbusBusName
       [DBClient.nameDoNotQueue]
   case nameResult of
     DBClient.NamePrimaryOwner -> return (Just client)
@@ -279,27 +300,23 @@ run options = do
           Right config -> return config
     runWithConfig $ configWithOptions config options
 
--- | Asks the running instance of JWS to stop execution.
-runStop :: IO ()
-runStop = do
-  client <- DBClient.connectSession
-  reply <-
+-- | Sends the given member name to the active JWS instance. If an error is
+-- encountered, prints a message.
+sendDBusMessage :: DB.MemberName -> IO ()
+sendDBusMessage message = do
+  result <- E.bracket DBClient.connectSession DBClient.disconnect $ \client ->
     DBClient.call
       client
-      (DB.methodCall "/com/github/JWS/app" "com.github.JWS" "Stop")
-        { DB.methodCallDestination = Just "com.github.JWS"
+      ( DB.methodCall
+          dbusObjectPath
+          dbusInterfaceName
+          message
+      )
+        { DB.methodCallDestination = Just dbusBusName
         }
-  print reply
-
--- | Asks the running instance of JWS to restart.
-runRestart :: IO ()
-runRestart = do
-  client <- DBClient.connectSession
-  DBClient.callNoReply
-    client
-    (DB.methodCall "/com/github/JWS/app" "com.github.JWS" "Restart")
-      { DB.methodCallDestination = Just "com.github.JWS"
-      }
+  case result of
+    Left err -> IO.hPutStrLn IO.stderr $ DB.methodErrorMessage err
+    Right _ -> return ()
 
 -- | Executes JWS.
 main :: IO ()
@@ -307,5 +324,5 @@ main = do
   options <- O.parseOptions
   case options of
     O.Run runOpts -> run runOpts
-    O.Stop -> runStop
-    O.Restart -> runRestart
+    O.Stop -> sendDBusMessage dbusStopMethod
+    O.Restart -> sendDBusMessage dbusRestartMethod
