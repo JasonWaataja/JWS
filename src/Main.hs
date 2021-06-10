@@ -106,21 +106,29 @@ setRandomBackground config gen =
           _ <- setBackground background config
           return gen'
 
+-- | Unique bus name to use.
 dbusBusName :: DB.BusName
 dbusBusName = "com.github.JWS"
 
+-- | Path to the single JWS DBus object.
 dbusObjectPath :: DB.ObjectPath
 dbusObjectPath = "/com/github/JWS/app"
 
+-- | Name of the interface the single JWS object exports.
 dbusInterfaceName :: DB.InterfaceName
 dbusInterfaceName = "com.github.JWS"
 
+-- | Name of method that stops JWS.
 dbusStopMethod :: DB.MemberName
 dbusStopMethod = "Stop"
 
+-- | Name of method that restarts JWS.
 dbusRestartMethod :: DB.MemberName
 dbusRestartMethod = "Restart"
 
+-- | Exports JWS's DBus interface so that it may be stopped or restarted using
+-- DBus. If a stop or restart is requests, then a message is written to the
+-- given channel.
 exportMethods :: DBClient.Client -> Concurrent.Chan Message -> IO ()
 exportMethods client messageChan =
   DBClient.export
@@ -138,6 +146,9 @@ exportMethods client messageChan =
           ]
       }
 
+-- | Message received by the main loop of JWS which either informs it that a
+-- timer has completed and it should show the next wallpaper or that it should
+-- take some other action.
 data Message = MessageTimer | MessageStop | MessageRestart
 
 -- | Requests the unique bus name for JWS. Returns True if the name was
@@ -157,6 +168,8 @@ requestUniqueName client = do
       return False
     _ -> return False
 
+-- | @'withTimer' delay message chan action@ executes @action@ in an environment
+-- where @message@ is written to @chan@ repeatedly in intervals of @delay@.
 withTimer :: Suspend.Delay -> a -> Concurrent.Chan a -> IO b -> IO b
 withTimer delay message chan action =
   E.bracket
@@ -164,12 +177,15 @@ withTimer delay message chan action =
     Timer.stopTimer
     (const action)
 
+-- | Result of running JWS in rotation mode which instructs it what to do after
+-- it has received a request from DBus.
 data Result = ResultStop | ResultRestart deriving (Eq, Show)
 
 -- | Shows all backgrounds specified in the configuration on loop. When all
--- backgrounds have been displayed, restarts from the beginning. If another
--- instance os JWS requests the main instance to stop, then closes the given
--- client.
+-- backgrounds have been displayed, restarts from the beginning.  Shows
+-- randomized backgrounds specified in the configuration on loop. If another
+-- instance os JWS requests the primary instance to stop or restart, then
+-- returns the requested action.
 showAllBackgrounds :: C.Config -> Concurrent.Chan Message -> IO Result
 showAllBackgrounds config chan = do
   withTimer
@@ -189,8 +205,8 @@ showAllBackgrounds config chan = do
         MessageRestart -> return ResultRestart
 
 -- Shows randomized backgrounds specified in the configuration on loop. If
--- another instance os JWS requests the main instance to stop, then closes the
--- given client.
+-- another instance os JWS requests the primary instance to stop or restart,
+-- then returns the requested action.
 showBackgroundsRandomized :: C.Config -> Concurrent.Chan Message -> IO Result
 showBackgroundsRandomized config chan = do
   gen <- Random.newStdGen
@@ -202,15 +218,12 @@ showBackgroundsRandomized config chan = do
   where
     loop :: Random.RandomGen g => g -> IO Result
     loop gen = do
-      backgrounds <- makeBackgroundList config
-      let (index, gen') = Random.randomR (0, length backgrounds - 1) gen
-       in do
-            _ <- setBackground (backgrounds !! index) config
-            message <- Concurrent.readChan chan
-            case message of
-              MessageTimer -> loop gen'
-              MessageStop -> return ResultStop
-              MessageRestart -> return ResultRestart
+      gen' <- setRandomBackground config gen
+      message <- Concurrent.readChan chan
+      case message of
+        MessageTimer -> loop gen'
+        MessageStop -> return ResultStop
+        MessageRestart -> return ResultRestart
 
 -- | An action that returns the configuration file to use if one could be found,
 -- or Nothing otherwise. Searches @$XDG_CONFIG_HOME/jws/config.yaml@ and
@@ -224,6 +237,9 @@ getConfigPath options =
       homeConfigPath <- expandPath "~/.jws.yaml"
       Loops.firstM Dir.doesFileExist [xdgConfigPath, homeConfigPath]
 
+-- | Enters a loop where a background is displayed at regular intervals and can
+-- be cancelled by another instance of JWS. Runs forever or returns the action
+-- requested by another instance.
 runWithRotation :: C.Config -> IO Result
 runWithRotation config =
   E.bracket
