@@ -204,7 +204,7 @@ showAllBackgrounds config chan = do
         MessageStop -> return ResultStop
         MessageRestart -> return ResultRestart
 
--- Shows randomized backgrounds specified in the configuration on loop. If
+-- | Shows randomized backgrounds specified in the configuration on loop. If
 -- another instance os JWS requests the primary instance to stop or restart,
 -- then returns the requested action.
 showBackgroundsRandomized :: C.Config -> Concurrent.Chan Message -> IO Result
