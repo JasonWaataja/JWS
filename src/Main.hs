@@ -316,6 +316,10 @@ run options = do
           Right config -> return config
     runWithConfig $ configWithOptions config options
 
+-- | Error name when the requested method doesn't exist.
+notRunningErrorName :: String
+notRunningErrorName = "org.freedesktop.DBus.Error.ServiceUnknown"
+
 -- | Sends the given member name to the active JWS instance. If an error is
 -- encountered, prints a message.
 sendDBusMessage :: DB.MemberName -> IO ()
@@ -331,7 +335,14 @@ sendDBusMessage message = do
         { DB.methodCallDestination = Just dbusBusName
         }
   case result of
-    Left err -> IO.hPutStrLn IO.stderr $ DB.methodErrorMessage err
+    Left err ->
+      let name = DB.formatErrorName $ DB.methodErrorName err
+       in if name == notRunningErrorName
+            then putStrLn "JWS not running"
+            else do
+              IO.hPutStrLn IO.stderr name
+              IO.hPutStrLn IO.stderr $ DB.methodErrorMessage err
+              Exit.exitFailure
     Right _ -> return ()
 
 -- | Executes JWS.
