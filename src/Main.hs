@@ -140,26 +140,22 @@ exportMethods client messageChan =
 
 data Message = MessageTimer | MessageStop | MessageRestart
 
--- | Attempts to open a unique DBus connection with a unique name. Returns the
--- connection on success and Nothing on failure, printing out a message of the
--- name was already in use.
-openClient :: IO (Maybe DBClient.Client)
-openClient = do
-  client <- DBClient.connectSession
+-- | Requests the unique bus name for JWS. Returns True if the name was
+-- successfully acquired and False otherwise. Prints a message of the name was
+-- already in use.
+requestUniqueName :: DBClient.Client -> IO Bool
+requestUniqueName client = do
   nameResult <-
     DBClient.requestName
       client
       dbusBusName
       [DBClient.nameDoNotQueue]
   case nameResult of
-    DBClient.NamePrimaryOwner -> return (Just client)
+    DBClient.NamePrimaryOwner -> return True
     DBClient.NameExists -> do
       putStrLn "JWS already running"
-      DBClient.disconnect client
-      return Nothing
-    _ -> do
-      DBClient.disconnect client
-      return Nothing
+      return False
+    _ -> return False
 
 withTimer :: Suspend.Delay -> a -> Concurrent.Chan a -> IO b -> IO b
 withTimer delay message chan action =
@@ -174,55 +170,47 @@ data Result = ResultStop | ResultRestart deriving (Eq, Show)
 -- backgrounds have been displayed, restarts from the beginning. If another
 -- instance os JWS requests the main instance to stop, then closes the given
 -- client.
-showAllBackgrounds :: C.Config -> DBClient.Client -> Concurrent.Chan Message -> IO Result
-showAllBackgrounds config client chan = do
-  exportMethods client chan
+showAllBackgrounds :: C.Config -> Concurrent.Chan Message -> IO Result
+showAllBackgrounds config chan = do
   withTimer
     (Suspend.sDelay $ fromIntegral $ C.configSwitchTime config)
     MessageTimer
     chan
-    ( do
-        backgrounds <- makeBackgroundList config
-        contents <- Concurrent.getChanContents chan
-        foldr
-          ( \(background, message) result -> do
-              _ <- setBackground background config
-              case message of
-                MessageTimer -> result
-                MessageStop -> return ResultStop
-                MessageRestart -> return ResultRestart
-          )
-          undefined
-          (zip (cycle backgrounds) contents)
-    )
+    (makeBackgroundList config >>= loop . cycle)
+  where
+    loop :: [FilePath] -> IO Result
+    loop [] = error "empty background list"
+    loop (background : backgrounds) = do
+      _ <- setBackground background config
+      message <- Concurrent.readChan chan
+      case message of
+        MessageTimer -> loop backgrounds
+        MessageStop -> return ResultStop
+        MessageRestart -> return ResultRestart
 
 -- Shows randomized backgrounds specified in the configuration on loop. If
 -- another instance os JWS requests the main instance to stop, then closes the
 -- given client.
-showBackgroundsRandomized :: C.Config -> DBClient.Client -> Concurrent.Chan Message -> IO Result
-showBackgroundsRandomized config client messageChan = do
-  exportMethods client messageChan
+showBackgroundsRandomized :: C.Config -> Concurrent.Chan Message -> IO Result
+showBackgroundsRandomized config chan = do
   gen <- Random.newStdGen
-  timer <-
-    Timer.repeatedTimer
-      (Concurrent.writeChan messageChan MessageTimer)
-      (Suspend.sDelay $ fromIntegral $ C.configSwitchTime config)
-  lastMessage <- loop timer gen
-  Timer.stopTimer timer
-  DBClient.disconnect client
-  case lastMessage of
-    MessageTimer -> return ResultStop
-    MessageStop -> return ResultStop
-    MessageRestart -> return ResultStop
+  withTimer
+    (Suspend.sDelay $ fromIntegral $ C.configSwitchTime config)
+    MessageTimer
+    chan
+    (loop gen)
   where
-    loop :: Random.RandomGen g => Timer.TimerIO -> g -> IO Message
-    loop timer gen = do
-      gen' <- setRandomBackground config gen
-      message <- Concurrent.readChan messageChan
-      case message of
-        MessageTimer -> loop timer gen'
-        MessageStop -> return message
-        MessageRestart -> return message
+    loop :: Random.RandomGen g => g -> IO Result
+    loop gen = do
+      backgrounds <- makeBackgroundList config
+      let (index, gen') = Random.randomR (0, length backgrounds - 1) gen
+       in do
+            _ <- setBackground (backgrounds !! index) config
+            message <- Concurrent.readChan chan
+            case message of
+              MessageTimer -> loop gen'
+              MessageStop -> return ResultStop
+              MessageRestart -> return ResultRestart
 
 -- | An action that returns the configuration file to use if one could be found,
 -- or Nothing otherwise. Searches @$XDG_CONFIG_HOME/jws/config.yaml@ and
@@ -236,24 +224,33 @@ getConfigPath options =
       homeConfigPath <- expandPath "~/.jws.yaml"
       Loops.firstM Dir.doesFileExist [xdgConfigPath, homeConfigPath]
 
+runWithRotation :: C.Config -> IO Result
+runWithRotation config =
+  E.bracket
+    DBClient.connectSession
+    DBClient.disconnect
+    ( \client -> do
+        isPrimary <- requestUniqueName client
+        if isPrimary
+          then do
+            chan <- Concurrent.newChan
+            exportMethods client chan
+            if C.configRandomize config
+              then showBackgroundsRandomized config chan
+              else showAllBackgrounds config chan
+          else return ResultStop
+    )
+
 -- | Runs the main program with the given configuration.
 runWithConfig :: C.Config -> IO ()
 runWithConfig config
   | null (C.configFiles config) =
     Exit.die "no wallpapers listed in \"files\" in configuration"
   | C.configRotate config = do
-    client <- openClient
-    messageChan <- Concurrent.newChan
-    case client of
-      Nothing -> return ()
-      Just c ->
-        if C.configRandomize config
-          then do
-            _ <- showBackgroundsRandomized config c messageChan
-            return ()
-          else do
-            _ <- showAllBackgrounds config c messageChan
-            return ()
+    result <- runWithRotation config
+    case result of
+      ResultStop -> return ()
+      ResultRestart -> main
   | C.configRandomize config = do
     gen <- Random.getStdGen
     _ <- setRandomBackground config gen
