@@ -47,18 +47,18 @@ instance Y.FromJSON BackgroundMode where
 -- | A configuration for JWS.
 data Config = Config
   { -- | Whether or not to switch images or stay on a single image.
-    configRotate :: !Bool,
-    -- | If rotating backgrounds, whether or not to randomize the order.
-    configRandomize :: !Bool,
-    -- | If rotating background, the number of seconds to wait between
+    configRotate :: !Bool
+  , -- | If rotating backgrounds, whether or not to randomize the order.
+    configRandomize :: !Bool
+  , -- | If rotating background, the number of seconds to wait between
     -- switching.
-    configSwitchTime :: !Integer,
-    -- | The mode to use to fit images to the screen.
-    configBackgroundMode :: !BackgroundMode,
-    -- | The color to use to fill in any blank space left after displaying the
+    configSwitchTime :: !Integer
+  , -- | The mode to use to fit images to the screen.
+    configBackgroundMode :: !BackgroundMode
+  , -- | The color to use to fill in any blank space left after displaying the
     -- image on the screen.
-    configBackgroundColor :: !String,
-    -- | The list of files and directories of backgrounds.
+    configBackgroundColor :: !String
+  , -- | The list of files and directories of backgrounds.
     configFiles :: ![String]
   }
   deriving (Eq, Show)
@@ -67,12 +67,12 @@ data Config = Config
 defaultConfig :: Config
 defaultConfig =
   Config
-    { configRotate = False,
-      configRandomize = False,
-      configSwitchTime = 600,
-      configBackgroundMode = BackgroundFill,
-      configBackgroundColor = "0x000000",
-      configFiles = []
+    { configRotate = False
+    , configRandomize = False
+    , configSwitchTime = 600
+    , configBackgroundMode = BackgroundFill
+    , configBackgroundColor = "0x000000"
+    , configFiles = []
     }
 
 instance Y.FromJSON Config where

@@ -15,15 +15,15 @@ data Options = Run RunOptions | Stop | Restart deriving (Eq, Show)
 
 -- | Options for a normal run of JWS.
 data RunOptions = RunOptions
-  { optionsConfigFile :: !(Maybe FilePath),
-    optionsRotate :: !Bool,
-    optionsNoRotate :: !Bool,
-    optionsRandomize :: !Bool,
-    optionsNoRandomize :: !Bool,
-    optionsTime :: !(Maybe Integer),
-    optionsMode :: !(Maybe C.BackgroundMode),
-    optionsBackgroundColor :: !(Maybe String),
-    optionsFiles :: ![FilePath]
+  { optionsConfigFile :: !(Maybe FilePath)
+  , optionsRotate :: !Bool
+  , optionsNoRotate :: !Bool
+  , optionsRandomize :: !Bool
+  , optionsNoRandomize :: !Bool
+  , optionsTime :: !(Maybe Integer)
+  , optionsMode :: !(Maybe C.BackgroundMode)
+  , optionsBackgroundColor :: !(Maybe String)
+  , optionsFiles :: ![FilePath]
   }
   deriving (Eq, Show)
 

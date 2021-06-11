@@ -71,10 +71,10 @@ setBackground path config =
       P.createProcess $
         P.proc
           "feh"
-          [ backgroundModeToFehArg $ C.configBackgroundMode config,
-            "--image-bg",
-            C.configBackgroundColor config,
-            path
+          [ backgroundModeToFehArg $ C.configBackgroundMode config
+          , "--image-bg"
+          , C.configBackgroundColor config
+          , path
           ]
     exitCode <- P.waitForProcess handle
     return (exitCode == Exit.ExitSuccess)
@@ -135,12 +135,12 @@ exportMethods client messageChan =
     client
     dbusObjectPath
     DBClient.defaultInterface
-      { DBClient.interfaceName = dbusInterfaceName,
-        DBClient.interfaceMethods =
+      { DBClient.interfaceName = dbusInterfaceName
+      , DBClient.interfaceMethods =
           [ DBClient.autoMethod
               dbusStopMethod
-              (Concurrent.writeChan messageChan MessageStop),
-            DBClient.autoMethod
+              (Concurrent.writeChan messageChan MessageStop)
+          , DBClient.autoMethod
               dbusRestartMethod
               (Concurrent.writeChan messageChan MessageRestart)
           ]
@@ -283,21 +283,21 @@ configWithOptions config options =
   C.Config
     { C.configRotate =
         (C.configRotate config || O.optionsRotate options)
-          && not (O.optionsNoRotate options),
-      C.configRandomize =
+          && not (O.optionsNoRotate options)
+    , C.configRandomize =
         (C.configRandomize config || O.optionsRandomize options)
-          && not (O.optionsNoRandomize options),
-      C.configSwitchTime =
+          && not (O.optionsNoRandomize options)
+    , C.configSwitchTime =
         Maybe.fromMaybe
           (C.configSwitchTime config)
-          (O.optionsTime options),
-      C.configBackgroundMode =
-        Maybe.fromMaybe (C.configBackgroundMode config) (O.optionsMode options),
-      C.configBackgroundColor =
+          (O.optionsTime options)
+    , C.configBackgroundMode =
+        Maybe.fromMaybe (C.configBackgroundMode config) (O.optionsMode options)
+    , C.configBackgroundColor =
         Maybe.fromMaybe
           (C.configBackgroundColor config)
-          (O.optionsBackgroundColor options),
-      C.configFiles = C.configFiles config ++ O.optionsFiles options
+          (O.optionsBackgroundColor options)
+    , C.configFiles = C.configFiles config ++ O.optionsFiles options
     }
 
 -- | Runs JWS in normal mode to display one or more backgrounds.
