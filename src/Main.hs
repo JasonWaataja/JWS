@@ -32,52 +32,49 @@ isImageFile path = L.isSuffixOf "jpg" path || L.isSuffixOf "png" path
 -- walked the file tree going through the contents of each directory in
 -- alphabetical order.
 readImageFiles :: FilePath -> IO [FilePath]
-readImageFiles path =
-  do
-    isFile <- Dir.doesFileExist path
-    if isFile
-      then
-        if isImageFile path
-          then return [path]
-          else return []
-      else do
-        isDir <- Dir.doesDirectoryExist path
-        if isDir
-          then do
-            contents <- Dir.listDirectory path
-            files <- mapM (readImageFiles . (path </>)) (L.sort contents)
-            return (concat files)
-          else return []
+readImageFiles path = do
+  isFile <- Dir.doesFileExist path
+  if isFile
+    then
+      if isImageFile path
+        then return [path]
+        else return []
+    else do
+      isDir <- Dir.doesDirectoryExist path
+      if isDir
+        then do
+          contents <- Dir.listDirectory path
+          files <- mapM (readImageFiles . (path </>)) (L.sort contents)
+          return (concat files)
+        else return []
 
 -- | @'backgroundModeToFehArg' mode@ returns a string that may be passed as an
 -- option to @feh@ to control the mode used to display the background on the
 -- screen.
 backgroundModeToFehArg :: C.BackgroundMode -> String
-backgroundModeToFehArg mode =
-  case mode of
-    C.BackgroundFill -> "--bg-fill"
-    C.BackgroundCenter -> "--bg-center"
-    C.BackgroundMax -> "--bg-max"
-    C.BackgroundScale -> "--bg-scale"
-    C.BackgroundTile -> "--bg-tile"
+backgroundModeToFehArg mode = case mode of
+  C.BackgroundFill -> "--bg-fill"
+  C.BackgroundCenter -> "--bg-center"
+  C.BackgroundMax -> "--bg-max"
+  C.BackgroundScale -> "--bg-scale"
+  C.BackgroundTile -> "--bg-tile"
 
 -- | @'setBackground' path config@ sets the background to the image at @path@
 -- using the mode specified in @config@. Returns true on success and false on
 -- failure.
 setBackground :: FilePath -> C.Config -> IO Bool
-setBackground path config =
-  do
-    (_, _, _, handle) <-
-      P.createProcess $
-        P.proc
-          "feh"
-          [ backgroundModeToFehArg $ C.configBackgroundMode config
-          , "--image-bg"
-          , C.configBackgroundColor config
-          , path
-          ]
-    exitCode <- P.waitForProcess handle
-    return (exitCode == Exit.ExitSuccess)
+setBackground path config = do
+  (_, _, _, handle) <-
+    P.createProcess $
+      P.proc
+        "feh"
+        [ backgroundModeToFehArg $ C.configBackgroundMode config
+        , "--image-bg"
+        , C.configBackgroundColor config
+        , path
+        ]
+  exitCode <- P.waitForProcess handle
+  return (exitCode == Exit.ExitSuccess)
 
 -- | @'expandPath' path@ performs shell globbing expansion on @path@ to expand
 -- @path@. If @path@ would expand to more than one path, returns one of them.
@@ -87,24 +84,22 @@ expandPath path = head <$> SE.glob path
 -- | @'fakeBackgroundList' config@ returns the list of all images specified in
 -- the files and directories of @config@.
 makeBackgroundList :: C.Config -> IO [FilePath]
-makeBackgroundList config =
-  do
-    paths <- mapM expandPath (C.configFiles config)
-    allFiles <- mapM readImageFiles paths
-    return (concat allFiles)
+makeBackgroundList config = do
+  paths <- mapM expandPath (C.configFiles config)
+  allFiles <- mapM readImageFiles paths
+  return (concat allFiles)
 
 -- | @'setRandomBackground' config gen@ chooses a random background from config
 -- and sets it as the background using the options in the configuration.
 setRandomBackground :: Random.RandomGen g => C.Config -> g -> IO g
-setRandomBackground config gen =
-  do
-    backgrounds <- makeBackgroundList config
-    let len = length backgrounds
-        (index, gen') = Random.randomR (0, len - 1) gen
-        background = backgrounds !! index
-     in do
-          _ <- setBackground background config
-          return gen'
+setRandomBackground config gen = do
+  backgrounds <- makeBackgroundList config
+  let len = length backgrounds
+      (index, gen') = Random.randomR (0, len - 1) gen
+      background = backgrounds !! index
+   in do
+        _ <- setBackground background config
+        return gen'
 
 -- | Unique bus name to use.
 dbusBusName :: DB.BusName
