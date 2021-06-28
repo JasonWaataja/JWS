@@ -97,9 +97,8 @@ setRandomBackground config gen = do
   let len = length backgrounds
       (index, gen') = Random.randomR (0, len - 1) gen
       background = backgrounds !! index
-   in do
-        _ <- setBackground background config
-        return gen'
+  _ <- setBackground background config
+  return gen'
 
 -- | Unique bus name to use.
 dbusBusName :: DB.BusName
@@ -189,7 +188,6 @@ showAllBackgrounds config chan = do
     chan
     (makeBackgroundList config >>= loop . cycle)
   where
-    loop :: [FilePath] -> IO Result
     loop [] = error "empty background list"
     loop (background : backgrounds) = do
       _ <- setBackground background config
@@ -211,7 +209,6 @@ showBackgroundsRandomized config chan = do
     chan
     (loop gen)
   where
-    loop :: Random.RandomGen g => g -> IO Result
     loop gen = do
       gen' <- setRandomBackground config gen
       message <- Concurrent.readChan chan
@@ -240,17 +237,16 @@ runWithRotation config =
   E.bracket
     DBClient.connectSession
     DBClient.disconnect
-    ( \client -> do
-        isPrimary <- requestUniqueName client
-        if isPrimary
-          then do
-            chan <- Concurrent.newChan
-            exportMethods client chan
-            if C.configRandomize config
-              then showBackgroundsRandomized config chan
-              else showAllBackgrounds config chan
-          else return ResultStop
-    )
+    $ \client -> do
+      isPrimary <- requestUniqueName client
+      if isPrimary
+        then do
+          chan <- Concurrent.newChan
+          exportMethods client chan
+          if C.configRandomize config
+            then showBackgroundsRandomized config chan
+            else showAllBackgrounds config chan
+        else return ResultStop
 
 -- | Runs the main program with the given configuration.
 runWithConfig :: C.Config -> IO ()
@@ -331,13 +327,14 @@ sendDBusMessage message = do
         }
   case result of
     Left err ->
-      let name = DB.formatErrorName $ DB.methodErrorName err
-       in if name == notRunningErrorName
-            then putStrLn "JWS not running"
-            else do
-              IO.hPutStrLn IO.stderr name
-              IO.hPutStrLn IO.stderr $ DB.methodErrorMessage err
-              Exit.exitFailure
+      if name == notRunningErrorName
+        then putStrLn "JWS not running"
+        else do
+          IO.hPutStrLn IO.stderr name
+          IO.hPutStrLn IO.stderr $ DB.methodErrorMessage err
+          Exit.exitFailure
+      where
+        name = DB.formatErrorName $ DB.methodErrorName err
     Right _ -> return ()
 
 -- | Executes JWS.
