@@ -183,7 +183,7 @@ data Result = ResultStop | ResultRestart deriving (Eq, Show)
 showAllBackgrounds :: C.Config -> Concurrent.Chan Message -> IO Result
 showAllBackgrounds config chan = do
   withTimer
-    (Suspend.sDelay $ fromIntegral $ C.configSwitchTime config)
+    (Suspend.sDelay . fromIntegral $ C.configSwitchTime config)
     MessageTimer
     chan
     (makeBackgroundList config >>= loop . cycle)
@@ -204,7 +204,7 @@ showBackgroundsRandomized :: C.Config -> Concurrent.Chan Message -> IO Result
 showBackgroundsRandomized config chan = do
   gen <- Random.newStdGen
   withTimer
-    (Suspend.sDelay $ fromIntegral $ C.configSwitchTime config)
+    (Suspend.sDelay . fromIntegral $ C.configSwitchTime config)
     MessageTimer
     chan
     (loop gen)
@@ -318,11 +318,7 @@ sendDBusMessage message = do
   result <- E.bracket DBClient.connectSession DBClient.disconnect $ \client ->
     DBClient.call
       client
-      ( DB.methodCall
-          dbusObjectPath
-          dbusInterfaceName
-          message
-      )
+      (DB.methodCall dbusObjectPath dbusInterfaceName message)
         { DB.methodCallDestination = Just dbusBusName
         }
   case result of
